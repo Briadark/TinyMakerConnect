@@ -1,0 +1,15 @@
+Options -Indexes
+RewriteEngine On
+
+RewriteRule ^(app|storage)(/.*)?$ - [F,L]
+RewriteRule ^(README\.md|schema\.sql|app_loader\.php)$ - [F,L]
+
+RewriteRule ^admin/?$ admin.php [QSA,L]
+RewriteRule ^install/?$ install.php [QSA,L]
+RewriteRule ^health/?$ health.php [QSA,L]
+RewriteRule ^api(/.*)?$ api.php [QSA,L]
+RewriteRule ^preview\.php$ preview.php [QSA,L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
