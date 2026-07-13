@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5 - Token header compatibility
+
+- Accept `X-TinyMaker-Token` from PHP server variables as well as `getallheaders()`, fixing authenticated printer calls on hosts that do not expose custom headers through `getallheaders()`.
+
 ## 0.1.4 - Printer recovery code
 
 - Added a separate per-printer recovery code for reclaiming Connect profiles.

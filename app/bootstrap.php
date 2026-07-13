@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/Migrations.php';
 
-const TINYMAKER_CONNECT_VERSION = '0.1.4';
+const TINYMAKER_CONNECT_VERSION = '0.1.5';
 
 function cors_headers(): void
 {
@@ -223,7 +223,13 @@ function optional_printer(): ?array
 function printer_token_from_request(): string
 {
     $headers = function_exists('getallheaders') ? getallheaders() : [];
-    return (string)($headers['X-TinyMaker-Token'] ?? $headers['x-tinymaker-token'] ?? ($_POST['publish_token'] ?? ($_GET['publish_token'] ?? '')));
+    return (string)($headers['X-TinyMaker-Token']
+        ?? $headers['x-tinymaker-token']
+        ?? $_SERVER['HTTP_X_TINYMAKER_TOKEN']
+        ?? $_SERVER['REDIRECT_HTTP_X_TINYMAKER_TOKEN']
+        ?? $_POST['publish_token']
+        ?? $_GET['publish_token']
+        ?? '');
 }
 
 function model_to_api(array $row): array
