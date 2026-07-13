@@ -2,7 +2,9 @@
 
 TinyMaker Connect is the PHP/MySQL companion service for TinyMaker printers running firmware based on [slibbinas/TinyMakerWifi](https://github.com/slibbinas/TinyMakerWifi/).
 
-It enables supported TinyMakerWifi firmware builds to connect to a self-hosted web service for model sharing, printer registration, settings backups, boot animations, moderation and future connected features.
+Supported TinyMakerWifi firmware builds can use the default hosted TinyMaker Connect service directly from the firmware. You do not need to host this project yourself to use Connect.
+
+This repository exists for people who want to run their own TinyMaker Connect instance, inspect the server code, contribute to the service, or build compatible integrations. A self-hosted instance provides the same model sharing, printer registration, settings backups, boot animations, moderation and connected-feature APIs as the hosted service.
 
 This is not for stock printers. A printer needs firmware with TinyMaker Connect support before it can register, publish models, import models or use Connect backups.
 
@@ -27,7 +29,7 @@ This is not for stock printers. A printer needs firmware with TinyMaker Connect 
   - fileinfo
   - openssl
 
-## Install
+## Optional Self-Hosting
 
 1. Create an empty MySQL database and database user.
 2. Download the latest TinyMakerConnect release ZIP, or clone this repository.
@@ -74,6 +76,8 @@ This folder is intended to be drag-and-drop deployable. The root `.htaccess` blo
 ## Firmware Compatibility
 
 TinyMaker Connect is designed for printers programmed with [slibbinas/TinyMakerWifi](https://github.com/slibbinas/TinyMakerWifi/) builds that include Connect support.
+
+Firmware builds may provide a default Connect server URL for the hosted service. Users who self-host can change the Connect server URL in the firmware settings when their build exposes that option.
 
 The firmware is expected to:
 
