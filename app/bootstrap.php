@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/Migrations.php';
 
-const TINYMAKER_CONNECT_VERSION = '0.1.1';
+const TINYMAKER_CONNECT_VERSION = '0.1.2';
 
 function cors_headers(): void
 {

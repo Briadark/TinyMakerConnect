@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.2 - Model licenses
 
 - Added structured model license storage, API output, admin editing and public display.
 - Added database migration `008_model_license`.
