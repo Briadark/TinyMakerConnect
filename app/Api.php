@@ -19,6 +19,7 @@ function printer_register_response(array $printer, bool $leaderboard, int $statu
         'ok' => true,
         'printer_public_id' => $printer['public_id'],
         'publish_token' => $printer['publish_token'],
+        'recovery_code' => $printer['recovery_token'],
         'leaderboard_opt_in' => $leaderboard,
         'blocked' => (bool)$printer['blocked'],
     ], $status);
@@ -28,8 +29,9 @@ function create_printer_for_hardware(string $hash, string $firmware, string $nam
 {
     $publicId = public_id();
     $publishToken = token();
-    $insert = db()->prepare('INSERT INTO printers (public_id, hardware_hash, publish_token, firmware_version, printer_name, leaderboard_opt_in) VALUES (?, ?, ?, ?, ?, ?)');
-    $insert->execute([$publicId, $hash, $publishToken, $firmware ?: null, $name ?: null, $leaderboard]);
+    $recoveryToken = token();
+    $insert = db()->prepare('INSERT INTO printers (public_id, hardware_hash, publish_token, recovery_token, firmware_version, printer_name, leaderboard_opt_in) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    $insert->execute([$publicId, $hash, $publishToken, $recoveryToken, $firmware ?: null, $name ?: null, $leaderboard]);
     $stmt = db()->prepare('SELECT * FROM printers WHERE public_id = ? LIMIT 1');
     $stmt->execute([$publicId]);
     return $stmt->fetch();
@@ -97,7 +99,7 @@ function api_lookup_printer(): void
 function api_reclaim_printer(): void
 {
     $hardware = clean_string((string)($_POST['hardware_id'] ?? ''), 128);
-    $recovery = clean_string((string)($_POST['recovery_code'] ?? ($_POST['publish_token'] ?? '')), 80);
+    $recovery = clean_string((string)($_POST['recovery_code'] ?? ''), 80);
     if ($hardware === '' || $recovery === '') {
         error_response('hardware_id and recovery_code required', 400);
     }
@@ -110,7 +112,7 @@ function api_reclaim_printer(): void
     $stmt = db()->prepare('SELECT * FROM printers WHERE hardware_hash = ? LIMIT 1');
     $stmt->execute([$hash]);
     $printer = $stmt->fetch();
-    if (!$printer || !hash_equals((string)$printer['publish_token'], $recovery)) {
+    if (!$printer || !hash_equals((string)$printer['recovery_token'], $recovery)) {
         error_response('invalid recovery code', 401);
     }
     $update = db()->prepare('UPDATE printers SET firmware_version = ?, printer_name = COALESCE(NULLIF(?, ""), printer_name), leaderboard_opt_in = ?, last_seen = NOW() WHERE id = ?');

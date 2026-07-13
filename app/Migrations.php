@@ -17,6 +17,7 @@ function migrate_database(PDO $pdo): void
               public_id CHAR(16) NOT NULL UNIQUE,
               hardware_hash CHAR(64) NOT NULL UNIQUE,
               publish_token CHAR(64) NOT NULL UNIQUE,
+              recovery_token CHAR(64) NOT NULL UNIQUE,
               firmware_version VARCHAR(32) DEFAULT NULL,
               printer_name VARCHAR(80) DEFAULT NULL,
               leaderboard_opt_in TINYINT(1) NOT NULL DEFAULT 0,
@@ -184,6 +185,23 @@ function migrate_database(PDO $pdo): void
     apply_migration($pdo, '009_model_dual_previews', function (PDO $pdo): void {
         add_column_if_missing($pdo, 'models', 'preview_05_path', 'ALTER TABLE models ADD COLUMN preview_05_path VARCHAR(255) DEFAULT NULL AFTER checksum_sha256');
         add_column_if_missing($pdo, 'models', 'preview_1_path', 'ALTER TABLE models ADD COLUMN preview_1_path VARCHAR(255) DEFAULT NULL AFTER preview_05_path');
+    });
+
+    apply_migration($pdo, '010_printer_recovery_token', function (PDO $pdo): void {
+        add_column_if_missing($pdo, 'printers', 'recovery_token', 'ALTER TABLE printers ADD COLUMN recovery_token CHAR(64) NULL AFTER publish_token');
+        $stmt = $pdo->query('SELECT id FROM printers WHERE recovery_token IS NULL OR recovery_token = ""');
+        $update = $pdo->prepare('UPDATE printers SET recovery_token = ? WHERE id = ?');
+        while ($row = $stmt->fetch()) {
+            $update->execute([token(), $row['id']]);
+        }
+        add_index_if_missing($pdo, 'printers', 'idx_printers_recovery_token_unique', 'CREATE UNIQUE INDEX idx_printers_recovery_token_unique ON printers(recovery_token)');
+        try {
+            $pdo->exec('ALTER TABLE printers MODIFY recovery_token CHAR(64) NOT NULL');
+        } catch (PDOException $e) {
+            if (($e->errorInfo[1] ?? null) !== 1060) {
+                throw $e;
+            }
+        }
     });
 }
 

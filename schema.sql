@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS printers (
   public_id CHAR(16) NOT NULL UNIQUE,
   hardware_hash CHAR(64) NOT NULL UNIQUE,
   publish_token CHAR(64) NOT NULL UNIQUE,
+  recovery_token CHAR(64) NOT NULL UNIQUE,
   firmware_version VARCHAR(32) DEFAULT NULL,
   printer_name VARCHAR(80) DEFAULT NULL,
   leaderboard_opt_in TINYINT(1) NOT NULL DEFAULT 0,

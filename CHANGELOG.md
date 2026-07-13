@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 - Printer recovery code
+
+- Added a separate per-printer recovery code for reclaiming Connect profiles.
+- Registration now returns both the hidden publish token and the user-visible recovery code.
+- Reclaim now validates the recovery code instead of accepting the publish token.
+- Added database migration `010_printer_recovery_token`.
+
 ## 0.1.3 - Admin dashboard tabs
 
 - Split the admin dashboard into tabs for Overview, Models, Boot animations, Printers, Admins and Leaderboard.
