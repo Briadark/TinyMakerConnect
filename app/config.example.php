@@ -20,4 +20,7 @@ return [
         // Change this before production. Used only for hashes stored server-side.
         'server_salt' => 'replace-with-a-long-random-secret',
     ],
+    'updates' => [
+        'github_repo' => 'Briadark/TinyMakerConnect',
+    ],
 ];

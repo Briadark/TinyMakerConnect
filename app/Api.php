@@ -214,6 +214,9 @@ function api_publish_boot_animation(): void
     $license = clean_string((string)($_POST['license'] ?? 'CC-BY-NC'), 32);
     $version = clean_string((string)($_POST['version'] ?? '1.0.0'), 32);
     $installName = clean_install_name((string)($_POST['install_name'] ?? $name));
+    if (boot_animation_install_name_reserved($installName)) {
+        error_response('reserved install name', 400);
+    }
 
     if (!isset($_FILES['animation'])) {
         error_response('animation required', 400);
@@ -286,6 +289,9 @@ function api_update_boot_animation(string $publicId): void
     $credits = array_key_exists('original_credits', $data) ? clean_string((string)$data['original_credits'], 255) : $animation['original_credits'];
     $description = array_key_exists('description', $data) ? clean_string((string)$data['description'], 255) : $animation['description'];
     $installName = array_key_exists('install_name', $data) ? clean_install_name((string)$data['install_name']) : $animation['install_name'];
+    if (boot_animation_install_name_reserved($installName)) {
+        error_response('reserved install name', 400);
+    }
     $version = array_key_exists('version', $data) ? clean_string((string)$data['version'], 32) : ($animation['version'] ?? '1.0.0');
     $license = array_key_exists('license', $data) ? clean_string((string)$data['license'], 32) : ($animation['license'] ?? 'CC-BY-NC');
 

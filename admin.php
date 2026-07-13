@@ -69,6 +69,13 @@ $printers = admin_printers();
 $admins = admin_admins();
 $leaderboard = admin_leaderboard();
 $csrf = csrf_token();
+$updateStatus = null;
+$updateError = null;
+try {
+    $updateStatus = updater_latest_release(false);
+} catch (Throwable $e) {
+    $updateError = $e->getMessage();
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -84,6 +91,7 @@ $csrf = csrf_token();
     table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left;vertical-align:top}th{font-size:12px;color:var(--muted);font-weight:650}tr:last-child td{border-bottom:0}
     input,select{width:100%;border:1px solid var(--line);border-radius:6px;background:#101113;color:var(--text);padding:8px;font:inherit}button,.button{border:0;border-radius:7px;background:var(--accent);color:white;padding:8px 10px;font-weight:700;text-decoration:none;cursor:pointer}.secondary{background:#3a3d44}.danger{background:#7b2f2f}
     .inline{display:flex;gap:6px;align-items:center}.msg{padding:10px;border-radius:8px;margin-bottom:12px}.err{border:1px solid var(--bad);background:#321b1b;color:#ffd2d2}.ok{border:1px solid var(--ok);background:#18331e;color:#cbffd6}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 8px;color:var(--muted)}
+    .updateBanner{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px;margin-bottom:12px}.updateBanner.available{border-color:var(--accent);background:#2b2118}.updateBanner form{margin:0}.updateBanner .inline{flex-wrap:wrap}
     .moderation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}.moderation form{margin:0}.moderation .block-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}
     .uploadGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;align-items:end}.uploadGrid button{min-height:37px}
     @media(max-width:760px){.top{display:block}table,thead,tbody,tr,th,td{display:block}th{display:none}td{border-bottom:0}tr{border-bottom:1px solid var(--line);padding:8px}.moderation,.moderation .block-form{grid-template-columns:1fr}}
@@ -101,6 +109,33 @@ $csrf = csrf_token();
 
   <?php if ($notice): ?><div class="msg ok"><?= h($notice) ?></div><?php endif; ?>
   <?php if ($error): ?><div class="msg err"><?= h($error) ?></div><?php endif; ?>
+
+  <div class="updateBanner <?= $updateStatus && !empty($updateStatus['available']) ? 'available' : '' ?>">
+    <div>
+      <div class="label">Server update</div>
+      <?php if ($updateStatus): ?>
+        <div><b>TinyMaker Connect <?= h((string)$updateStatus['current']) ?></b><?php if (!empty($updateStatus['available'])): ?> - update available: <b><?= h((string)$updateStatus['latest']) ?></b><?php else: ?> - up to date<?php endif; ?></div>
+        <div class="muted">Latest release checked from <?= h((string)$updateStatus['repo']) ?></div>
+      <?php else: ?>
+        <div><b>TinyMaker Connect <?= h(TINYMAKER_CONNECT_VERSION) ?></b></div>
+        <div class="muted">Could not check for updates<?= $updateError ? ': ' . h($updateError) : '' ?></div>
+      <?php endif; ?>
+    </div>
+    <div class="inline">
+      <form method="post">
+        <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+        <input type="hidden" name="action" value="server_update_check">
+        <button class="secondary" type="submit">Check again</button>
+      </form>
+      <?php if ($updateStatus && !empty($updateStatus['available'])): ?>
+      <form method="post" onsubmit="return confirm('Update TinyMaker Connect now? app/config.php and storage/ will be preserved.');">
+        <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+        <input type="hidden" name="action" value="server_update_install">
+        <button type="submit">Update now</button>
+      </form>
+      <?php endif; ?>
+    </div>
+  </div>
 
   <section class="stats">
     <div class="stat"><div class="label">Published</div><div class="value"><?= (int)$stats['published'] ?></div></div>
@@ -174,7 +209,7 @@ $csrf = csrf_token();
       <input name="animation" type="file" accept=".tmb" required>
       <button type="submit">Upload animation</button>
     </form>
-    <p class="muted">Uploads must be TinyMaker <code>.tmb</code> files. The install name becomes the filename on the printer SD card.</p>
+    <p class="muted">Uploads must be TinyMaker <code>.tmb</code> files. The install name becomes the filename on the printer SD card. <code>Default</code> and <code>Shuffle</code> are reserved.</p>
   </div>
   <table>
     <thead><tr><th>Animation</th><th>Details</th><th>Printer</th><th>Status</th><th>Actions</th></tr></thead>

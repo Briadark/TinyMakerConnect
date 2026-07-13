@@ -7,6 +7,7 @@ tinymaker_connect_require_app('bootstrap.php');
 $result = [
     'ok' => true,
     'app' => 'TinyMaker Connect',
+    'version' => TINYMAKER_CONNECT_VERSION,
     'php' => PHP_VERSION,
     'config_installed' => config_is_installed(),
     'database' => null,

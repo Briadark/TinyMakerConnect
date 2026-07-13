@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/Migrations.php';
 
+const TINYMAKER_CONNECT_VERSION = '0.1.0';
+
 function cors_headers(): void
 {
     header('Access-Control-Allow-Origin: *');
@@ -24,6 +26,7 @@ function config(): array
     $config = require $path;
     $config['storage']['boot_animations'] ??= dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'boot_animations';
     $config['limits']['max_boot_animation_bytes'] ??= 8 * 1024 * 1024;
+    $config['updates']['github_repo'] ??= 'Briadark/TinyMakerConnect';
     return $config;
 }
 
@@ -137,6 +140,11 @@ function clean_install_name(string $value): string
         $out = substr($out, 0, 40);
     }
     return $out !== '' ? $out : 'downloaded';
+}
+
+function boot_animation_install_name_reserved(string $value): bool
+{
+    return in_array(strtolower(trim($value)), ['default', 'shuffle'], true);
 }
 
 function h(?string $value): string

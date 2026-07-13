@@ -70,6 +70,7 @@ The admin dashboard currently includes:
 
 - model counts by status
 - boot animation upload, replacement, delete and moderation
+- server update check and one-click update from the latest GitHub release
 - download/rating/bookmark counts
 - latest published/hidden/removed models
 - edit model name, credits and status
@@ -124,6 +125,26 @@ curl https://your-tinymaker-connect-domain.example/api/boot-animations
 Boot animations are uploaded, replaced and deleted from the admin dashboard for now. The API exposes published animations and direct `.tmb` downloads so firmware can install them through its local boot-animation install endpoint.
 Install counts increase at most once per printer token; preview rendering does not increment the install counter.
 Boot animation records include a version and checksum. Firmware that installs from Connect can store optional `/bootanim/{install_name}.json` metadata next to the `.tmb`; manually copied `.tmb` files still work, but version/update detection requires the JSON metadata.
+
+## Server Updates
+
+The admin dashboard shows the installed TinyMaker Connect version and checks GitHub releases for updates. Press **Update now** to download the latest release ZIP and replace the application files.
+
+The updater preserves:
+
+- `app/config.php`
+- `storage/`
+
+After updating, the normal migration system keeps the database schema current on the next request.
+
+To publish a server version:
+
+1. Update `TINYMAKER_CONNECT_VERSION` in `app/bootstrap.php`.
+2. Update `CHANGELOG.md`.
+3. Push the code to GitHub.
+4. Create a GitHub Release using tag `vX.Y.Z`.
+
+The admin updater reads the latest GitHub Release from the repository configured in `app/config.php` under `updates.github_repo`.
 
 Rate a model once per printer:
 

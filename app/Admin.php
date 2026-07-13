@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/Updater.php';
 
 function admin_session(): void
 {
@@ -186,6 +187,18 @@ function admin_handle_post(): ?string
     $action = (string)($_POST['action'] ?? '');
     $admin = require_admin();
 
+    if ($action === 'server_update_check') {
+        $status = updater_latest_release(true);
+        return !empty($status['available'])
+            ? 'Update available: ' . $status['latest'] . '.'
+            : 'TinyMaker Connect is up to date.';
+    }
+
+    if ($action === 'server_update_install') {
+        $result = updater_install_latest();
+        return (string)$result['message'];
+    }
+
     if ($action === 'admin_add') {
         if ((int)$admin['is_super'] !== 1) {
             throw new RuntimeException('Only the super admin can add admins.');
@@ -243,6 +256,9 @@ function admin_handle_post(): ?string
         if ($name === '') {
             throw new RuntimeException('Animation name is required.');
         }
+        if (boot_animation_install_name_reserved($installName)) {
+            throw new RuntimeException('Default and Shuffle are reserved install names.');
+        }
         $tmpPath = admin_validate_boot_animation_file($_FILES['animation'] ?? []);
 
         $publicId = public_id();
@@ -294,6 +310,9 @@ function admin_handle_post(): ?string
         $version = clean_string((string)($_POST['version'] ?? '1.0.0'), 32);
         if ($name === '') {
             throw new RuntimeException('Animation name is required.');
+        }
+        if (boot_animation_install_name_reserved($installName)) {
+            throw new RuntimeException('Default and Shuffle are reserved install names.');
         }
         $replaceFile = isset($_FILES['animation']) && ($_FILES['animation']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
         if ($replaceFile) {
