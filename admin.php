@@ -87,6 +87,7 @@ try {
     :root{color-scheme:dark;--bg:#111214;--panel:#1b1d20;--text:#f2f2f2;--muted:#a5a7ad;--line:#33363d;--accent:#e8720c;--bad:#d95c5c;--ok:#3d9b55}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}main{width:min(1180px,100%);margin:0 auto;padding:22px}
     a{color:inherit}.top{display:flex;justify-content:space-between;gap:14px;align-items:flex-end;margin-bottom:18px}h1{margin:0;font-size:28px}h2{font-size:20px;margin:22px 0 10px}.muted{color:var(--muted)}
+    .adminTabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0 16px}.adminTab{border:1px solid var(--line);border-radius:8px;background:#303238;color:var(--text);padding:12px 10px;font-weight:750;cursor:pointer}.adminTab.active{border-color:var(--accent);background:var(--accent);color:white}.tabPanel{display:none}.tabPanel.active{display:block}
     .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}.label{font-size:12px;color:var(--muted)}.value{font-size:24px;font-weight:750}
     table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left;vertical-align:top}th{font-size:12px;color:var(--muted);font-weight:650}tr:last-child td{border-bottom:0}
     input,select{width:100%;border:1px solid var(--line);border-radius:6px;background:#101113;color:var(--text);padding:8px;font:inherit}button,.button{border:0;border-radius:7px;background:var(--accent);color:white;padding:8px 10px;font-weight:700;text-decoration:none;cursor:pointer}.secondary{background:#3a3d44}.danger{background:#7b2f2f}
@@ -110,6 +111,16 @@ try {
   <?php if ($notice): ?><div class="msg ok"><?= h($notice) ?></div><?php endif; ?>
   <?php if ($error): ?><div class="msg err"><?= h($error) ?></div><?php endif; ?>
 
+  <nav class="adminTabs" aria-label="Admin sections">
+    <button class="adminTab" type="button" data-admin-tab="overview">Overview</button>
+    <button class="adminTab" type="button" data-admin-tab="models">Models</button>
+    <button class="adminTab" type="button" data-admin-tab="boot-animations">Boot animations</button>
+    <button class="adminTab" type="button" data-admin-tab="printers">Printers</button>
+    <button class="adminTab" type="button" data-admin-tab="admins">Admins</button>
+    <button class="adminTab" type="button" data-admin-tab="leaderboard">Leaderboard</button>
+  </nav>
+
+  <section class="tabPanel active" data-admin-panel="overview">
   <div class="updateBanner <?= $updateStatus && !empty($updateStatus['available']) ? 'available' : '' ?>">
     <div>
       <div class="label">Server update</div>
@@ -148,7 +159,9 @@ try {
     <div class="stat"><div class="label">Ratings</div><div class="value"><?= (int)$stats['ratings'] ?></div></div>
     <div class="stat"><div class="label">Bookmarks</div><div class="value"><?= (int)$stats['bookmarks'] ?></div></div>
   </section>
+  </section>
 
+  <section class="tabPanel" data-admin-panel="models">
   <h2>Models</h2>
   <table>
     <thead><tr><th>Model</th><th>Stats</th><th>Printer</th><th>Status</th><th>Actions</th></tr></thead>
@@ -197,7 +210,9 @@ try {
     <?php endforeach; ?>
     </tbody>
   </table>
+  </section>
 
+  <section class="tabPanel" data-admin-panel="boot-animations">
   <h2>Boot animations</h2>
   <div class="panel" style="margin-bottom:10px">
     <form method="post" enctype="multipart/form-data" class="uploadGrid">
@@ -269,7 +284,9 @@ try {
     <?php endif; ?>
     </tbody>
   </table>
+  </section>
 
+  <section class="tabPanel" data-admin-panel="printers">
   <h2>Printers</h2>
   <table>
     <thead><tr><th>Printer</th><th>Firmware</th><th>Models</th><th>Seen</th><th>Moderation</th></tr></thead>
@@ -320,7 +337,9 @@ try {
     <?php endforeach; ?>
     </tbody>
   </table>
+  </section>
 
+  <section class="tabPanel" data-admin-panel="admins">
   <h2>Admins</h2>
   <?php if ((int)$admin['is_super'] === 1): ?>
   <div class="panel" style="margin-bottom:10px">
@@ -358,7 +377,9 @@ try {
     <?php endforeach; ?>
     </tbody>
   </table>
+  </section>
 
+  <section class="tabPanel" data-admin-panel="leaderboard">
   <h2>Leaderboard</h2>
   <table>
     <thead><tr><th>Printer</th><th>Uploads</th><th>Downloads</th><th>Ratings</th><th>Bookmarks</th><th>Layers uploaded</th></tr></thead>
@@ -375,6 +396,37 @@ try {
     <?php endforeach; ?>
     </tbody>
   </table>
+  </section>
 </main>
+<script>
+(() => {
+  const tabs = Array.from(document.querySelectorAll('[data-admin-tab]'));
+  const panels = Array.from(document.querySelectorAll('[data-admin-panel]'));
+  const panelNames = new Set(panels.map((panel) => panel.dataset.adminPanel));
+
+  function storedTab() {
+    try {
+      return localStorage.getItem('tinymakerConnectAdminTab');
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function setTab(name) {
+    const tabName = panelNames.has(name) ? name : 'overview';
+    tabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.adminTab === tabName));
+    panels.forEach((panel) => panel.classList.toggle('active', panel.dataset.adminPanel === tabName));
+    try {
+      localStorage.setItem('tinymakerConnectAdminTab', tabName);
+      history.replaceState(null, '', '#' + tabName);
+    } catch (e) {
+      window.location.hash = tabName;
+    }
+  }
+
+  tabs.forEach((tab) => tab.addEventListener('click', () => setTab(tab.dataset.adminTab)));
+  setTab((window.location.hash || '').slice(1) || storedTab() || 'overview');
+})();
+</script>
 </body>
 </html>

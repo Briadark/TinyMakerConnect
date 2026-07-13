@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 - Admin dashboard tabs
+
+- Split the admin dashboard into tabs for Overview, Models, Boot animations, Printers, Admins and Leaderboard.
+- Kept update checks and server statistics in the Overview tab.
+- Remember the last selected admin tab in the browser.
+
 ## 0.1.2 - Model licenses
 
 - Added structured model license storage, API output, admin editing and public display.
