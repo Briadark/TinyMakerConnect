@@ -73,6 +73,14 @@ CREATE TABLE IF NOT EXISTS boot_animation_downloads (
 CREATE INDEX idx_boot_animation_downloads_printer ON boot_animation_downloads(printer_id);
 CREATE UNIQUE INDEX idx_boot_animation_downloads_animation_printer_unique ON boot_animation_downloads(animation_id, printer_id);
 
+CREATE TABLE IF NOT EXISTS printer_backups (
+  printer_id INT NOT NULL PRIMARY KEY,
+  backup_json MEDIUMTEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_printer_backups_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+);
+
 CREATE TABLE IF NOT EXISTS model_downloads (
   id INT AUTO_INCREMENT PRIMARY KEY,
   model_id INT NOT NULL,

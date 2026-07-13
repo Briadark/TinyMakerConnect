@@ -23,6 +23,22 @@ try {
         api_register_printer();
     }
 
+    if ($parts === ['api', 'printers', 'lookup'] && $method === 'POST') {
+        api_lookup_printer();
+    }
+
+    if ($parts === ['api', 'printers', 'reclaim'] && $method === 'POST') {
+        api_reclaim_printer();
+    }
+
+    if ($parts === ['api', 'printers', 'me', 'backup'] && $method === 'GET') {
+        api_get_printer_backup();
+    }
+
+    if ($parts === ['api', 'printers', 'me', 'backup'] && $method === 'POST') {
+        api_store_printer_backup();
+    }
+
     if ($parts === ['api', 'printers', 'me', 'models'] && $method === 'GET') {
         api_list_models(true);
     }

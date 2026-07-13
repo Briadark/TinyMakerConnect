@@ -94,6 +94,51 @@ curl -X POST https://your-tinymaker-connect-domain.example/api/printers/register
 ```
 
 Set `leaderboard_opt_in=1` only when the user explicitly chooses to share printer stats on the public leaderboard. Registration, publishing, ratings and bookmarks work without leaderboard sharing.
+If a printer was connected before and does not send its saved token, registration returns `409` with `reclaim_required=true`.
+
+Check whether a printer is already known:
+
+```bash
+curl -X POST https://your-tinymaker-connect-domain.example/api/printers/lookup \
+  -F hardware_id=ESP32_MAC_OR_HASH
+```
+
+Reclaim an existing printer profile with the recovery code shown by the firmware:
+
+```bash
+curl -X POST https://your-tinymaker-connect-domain.example/api/printers/reclaim \
+  -F hardware_id=ESP32_MAC_OR_HASH \
+  -F recovery_code=PUBLISH_TOKEN_FROM_BACKUP_OR_DISPLAY \
+  -F firmware_version=0.10.0 \
+  -F printer_name="Workshop TinyMaker" \
+  -F leaderboard_opt_in=0
+```
+
+Create a fresh profile instead of reclaiming:
+
+```bash
+curl -X POST https://your-tinymaker-connect-domain.example/api/printers/register \
+  -F hardware_id=ESP32_MAC_OR_HASH \
+  -F firmware_version=0.10.0 \
+  -F printer_name="Workshop TinyMaker" \
+  -F leaderboard_opt_in=0 \
+  -F new_profile=1
+```
+
+Store a printer settings backup:
+
+```bash
+curl -X POST https://your-tinymaker-connect-domain.example/api/printers/me/backup \
+  -H "X-TinyMaker-Token: PUBLISH_TOKEN" \
+  --data-binary @tinymaker-settings-backup.json
+```
+
+Fetch the latest printer settings backup:
+
+```bash
+curl https://your-tinymaker-connect-domain.example/api/printers/me/backup \
+  -H "X-TinyMaker-Token: PUBLISH_TOKEN"
+```
 
 Publish a model:
 

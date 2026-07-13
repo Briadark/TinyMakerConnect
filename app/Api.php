@@ -3,6 +3,38 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 
+function printer_hardware_hash(string $hardware): string
+{
+    return hash('sha256', config()['security']['server_salt'] . '|printer|' . $hardware);
+}
+
+function request_truthy(string $key): bool
+{
+    return isset($_POST[$key]) && $_POST[$key] !== '' && $_POST[$key] !== '0' && $_POST[$key] !== 'false';
+}
+
+function printer_register_response(array $printer, bool $leaderboard, int $status = 200): void
+{
+    json_response([
+        'ok' => true,
+        'printer_public_id' => $printer['public_id'],
+        'publish_token' => $printer['publish_token'],
+        'leaderboard_opt_in' => $leaderboard,
+        'blocked' => (bool)$printer['blocked'],
+    ], $status);
+}
+
+function create_printer_for_hardware(string $hash, string $firmware, string $name, int $leaderboard): array
+{
+    $publicId = public_id();
+    $publishToken = token();
+    $insert = db()->prepare('INSERT INTO printers (public_id, hardware_hash, publish_token, firmware_version, printer_name, leaderboard_opt_in) VALUES (?, ?, ?, ?, ?, ?)');
+    $insert->execute([$publicId, $hash, $publishToken, $firmware ?: null, $name ?: null, $leaderboard]);
+    $stmt = db()->prepare('SELECT * FROM printers WHERE public_id = ? LIMIT 1');
+    $stmt->execute([$publicId]);
+    return $stmt->fetch();
+}
+
 function api_register_printer(): void
 {
     $hardware = clean_string((string)($_POST['hardware_id'] ?? ''), 128);
@@ -12,36 +44,123 @@ function api_register_printer(): void
 
     $firmware = clean_string((string)($_POST['firmware_version'] ?? ''), 32);
     $name = clean_string((string)($_POST['printer_name'] ?? ''), 80);
-    $leaderboard = !empty($_POST['leaderboard_opt_in']) && $_POST['leaderboard_opt_in'] !== '0' && $_POST['leaderboard_opt_in'] !== 'false' ? 1 : 0;
-    $hash = hash('sha256', config()['security']['server_salt'] . '|printer|' . $hardware);
+    $leaderboard = request_truthy('leaderboard_opt_in') ? 1 : 0;
+    $incomingToken = clean_string((string)($_POST['publish_token'] ?? ''), 80);
+    $hash = printer_hardware_hash($hardware);
 
     $stmt = db()->prepare('SELECT * FROM printers WHERE hardware_hash = ? LIMIT 1');
     $stmt->execute([$hash]);
     $existing = $stmt->fetch();
     if ($existing) {
-        $update = db()->prepare('UPDATE printers SET firmware_version = ?, printer_name = COALESCE(NULLIF(?, ""), printer_name), leaderboard_opt_in = ?, last_seen = NOW() WHERE id = ?');
-        $update->execute([$firmware ?: null, $name, $leaderboard, $existing['id']]);
+        if ($incomingToken !== '' && hash_equals((string)$existing['publish_token'], $incomingToken)) {
+            $update = db()->prepare('UPDATE printers SET firmware_version = ?, printer_name = COALESCE(NULLIF(?, ""), printer_name), leaderboard_opt_in = ?, last_seen = NOW() WHERE id = ?');
+            $update->execute([$firmware ?: null, $name, $leaderboard, $existing['id']]);
+            $existing['firmware_version'] = $firmware ?: $existing['firmware_version'];
+            $existing['printer_name'] = $name ?: $existing['printer_name'];
+            $existing['leaderboard_opt_in'] = $leaderboard;
+            printer_register_response($existing, (bool)$leaderboard);
+        }
+        if (request_truthy('new_profile')) {
+            $archiveHash = hash('sha256', $existing['hardware_hash'] . '|archived|' . $existing['public_id'] . '|' . time());
+            $archive = db()->prepare('UPDATE printers SET hardware_hash = ? WHERE id = ?');
+            $archive->execute([$archiveHash, $existing['id']]);
+            printer_register_response(create_printer_for_hardware($hash, $firmware, $name, $leaderboard), (bool)$leaderboard, 201);
+        }
         json_response([
-            'ok' => true,
+            'ok' => false,
+            'error' => 'reclaim required',
+            'reclaim_required' => true,
             'printer_public_id' => $existing['public_id'],
-            'publish_token' => $existing['publish_token'],
-            'leaderboard_opt_in' => (bool)$leaderboard,
-            'blocked' => (bool)$existing['blocked'],
-        ]);
+        ], 409);
     }
 
-    $publicId = public_id();
-    $publishToken = token();
-    $insert = db()->prepare('INSERT INTO printers (public_id, hardware_hash, publish_token, firmware_version, printer_name, leaderboard_opt_in) VALUES (?, ?, ?, ?, ?, ?)');
-    $insert->execute([$publicId, $hash, $publishToken, $firmware ?: null, $name ?: null, $leaderboard]);
+    printer_register_response(create_printer_for_hardware($hash, $firmware, $name, $leaderboard), (bool)$leaderboard, 201);
+}
 
+function api_lookup_printer(): void
+{
+    $hardware = clean_string((string)($_POST['hardware_id'] ?? ''), 128);
+    if ($hardware === '') {
+        error_response('hardware_id required', 400);
+    }
+    $hash = printer_hardware_hash($hardware);
+    $stmt = db()->prepare('SELECT public_id FROM printers WHERE hardware_hash = ? LIMIT 1');
+    $stmt->execute([$hash]);
+    $existing = $stmt->fetch();
     json_response([
         'ok' => true,
-        'printer_public_id' => $publicId,
-        'publish_token' => $publishToken,
-        'leaderboard_opt_in' => (bool)$leaderboard,
-        'blocked' => false,
-    ], 201);
+        'known' => (bool)$existing,
+        'printer_public_id' => $existing ? $existing['public_id'] : null,
+    ]);
+}
+
+function api_reclaim_printer(): void
+{
+    $hardware = clean_string((string)($_POST['hardware_id'] ?? ''), 128);
+    $recovery = clean_string((string)($_POST['recovery_code'] ?? ($_POST['publish_token'] ?? '')), 80);
+    if ($hardware === '' || $recovery === '') {
+        error_response('hardware_id and recovery_code required', 400);
+    }
+
+    $firmware = clean_string((string)($_POST['firmware_version'] ?? ''), 32);
+    $name = clean_string((string)($_POST['printer_name'] ?? ''), 80);
+    $leaderboard = request_truthy('leaderboard_opt_in') ? 1 : 0;
+    $hash = printer_hardware_hash($hardware);
+
+    $stmt = db()->prepare('SELECT * FROM printers WHERE hardware_hash = ? LIMIT 1');
+    $stmt->execute([$hash]);
+    $printer = $stmt->fetch();
+    if (!$printer || !hash_equals((string)$printer['publish_token'], $recovery)) {
+        error_response('invalid recovery code', 401);
+    }
+    $update = db()->prepare('UPDATE printers SET firmware_version = ?, printer_name = COALESCE(NULLIF(?, ""), printer_name), leaderboard_opt_in = ?, last_seen = NOW() WHERE id = ?');
+    $update->execute([$firmware ?: null, $name, $leaderboard, $printer['id']]);
+    $printer['firmware_version'] = $firmware ?: $printer['firmware_version'];
+    $printer['printer_name'] = $name ?: $printer['printer_name'];
+    $printer['leaderboard_opt_in'] = $leaderboard;
+    printer_register_response($printer, (bool)$leaderboard);
+}
+
+function api_store_printer_backup(): void
+{
+    $printer = require_printer();
+    $raw = file_get_contents('php://input') ?: '';
+    if ($raw === '' && isset($_POST['backup'])) {
+        $raw = (string)$_POST['backup'];
+    }
+    if (strlen($raw) < 10 || strlen($raw) > 655350) {
+        error_response('invalid backup', 400);
+    }
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded) || (int)($decoded['backupVersion'] ?? 0) < 1) {
+        error_response('not a TinyMaker backup', 400);
+    }
+
+    $stmt = db()->prepare(
+        'INSERT INTO printer_backups (printer_id, backup_json, updated_at)
+         VALUES (?, ?, NOW())
+         ON DUPLICATE KEY UPDATE backup_json = VALUES(backup_json), updated_at = NOW()'
+    );
+    $stmt->execute([$printer['id'], $raw]);
+    $ts = db()->prepare('SELECT UNIX_TIMESTAMP(updated_at) AS updated_epoch FROM printer_backups WHERE printer_id = ?');
+    $ts->execute([$printer['id']]);
+    json_response(['ok' => true, 'updated_epoch' => (int)$ts->fetchColumn()]);
+}
+
+function api_get_printer_backup(): void
+{
+    $printer = require_printer();
+    $stmt = db()->prepare('SELECT backup_json, UNIX_TIMESTAMP(updated_at) AS updated_epoch FROM printer_backups WHERE printer_id = ? LIMIT 1');
+    $stmt->execute([$printer['id']]);
+    $backup = $stmt->fetch();
+    if (!$backup) {
+        error_response('backup not found', 404);
+    }
+    json_response([
+        'ok' => true,
+        'updated_epoch' => (int)$backup['updated_epoch'],
+        'backup' => json_decode((string)$backup['backup_json'], true),
+    ]);
 }
 
 function api_list_models(bool $mine = false): void

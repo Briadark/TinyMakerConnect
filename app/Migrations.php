@@ -162,6 +162,18 @@ function migrate_database(PDO $pdo): void
     apply_migration($pdo, '006_boot_animation_version', function (PDO $pdo): void {
         add_column_if_missing($pdo, 'boot_animations', 'version', 'ALTER TABLE boot_animations ADD COLUMN version VARCHAR(32) NOT NULL DEFAULT \'1.0.0\' AFTER install_name');
     });
+
+    apply_migration($pdo, '007_printer_backups', function (PDO $pdo): void {
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS printer_backups (
+              printer_id INT NOT NULL PRIMARY KEY,
+              backup_json MEDIUMTEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              CONSTRAINT fk_printer_backups_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+            )'
+        );
+    });
 }
 
 function apply_migration(PDO $pdo, string $migration, callable $callback): void
