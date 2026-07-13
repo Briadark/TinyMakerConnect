@@ -40,7 +40,8 @@ function migrate_database(PDO $pdo): void
               resin_ml DECIMAL(8,2) DEFAULT NULL,
               file_size BIGINT NOT NULL,
               checksum_sha256 CHAR(64) NOT NULL,
-              preview_path VARCHAR(255) DEFAULT NULL,
+              preview_05_path VARCHAR(255) DEFAULT NULL,
+              preview_1_path VARCHAR(255) DEFAULT NULL,
               download_path VARCHAR(255) NOT NULL,
               status ENUM(\'pending\',\'published\',\'hidden\',\'removed\') NOT NULL DEFAULT \'published\',
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -178,6 +179,11 @@ function migrate_database(PDO $pdo): void
 
     apply_migration($pdo, '008_model_license', function (PDO $pdo): void {
         add_column_if_missing($pdo, 'models', 'license', 'ALTER TABLE models ADD COLUMN license VARCHAR(32) NOT NULL DEFAULT \'CC-BY-NC\' AFTER original_credits');
+    });
+
+    apply_migration($pdo, '009_model_dual_previews', function (PDO $pdo): void {
+        add_column_if_missing($pdo, 'models', 'preview_05_path', 'ALTER TABLE models ADD COLUMN preview_05_path VARCHAR(255) DEFAULT NULL AFTER checksum_sha256');
+        add_column_if_missing($pdo, 'models', 'preview_1_path', 'ALTER TABLE models ADD COLUMN preview_1_path VARCHAR(255) DEFAULT NULL AFTER preview_05_path');
     });
 }
 

@@ -59,7 +59,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
   </div>
   <div class="detail">
     <div class="preview">
-      <?php if ($model['preview_path']): ?>
+      <?php if ($model['preview_05_path'] || $model['preview_1_path']): ?>
         <img src="/preview.php?id=<?= h($model['public_id']) ?>" alt="">
       <?php else: ?>
         <span class="muted">No preview</span>
@@ -92,7 +92,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
     <?php foreach ($models as $item): ?>
       <a class="card" href="/model/<?= h($item['public_id']) ?>">
         <div class="preview">
-          <?php if ($item['preview_path']): ?>
+          <?php if ($item['preview_05_path'] || $item['preview_1_path']): ?>
             <img src="/preview.php?id=<?= h($item['public_id']) ?>" alt="">
           <?php else: ?>
             <span class="muted">No preview</span>

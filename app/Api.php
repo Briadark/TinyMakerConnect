@@ -235,6 +235,23 @@ function validate_upload(array $file, int $maxBytes, array $allowedExt): void
     }
 }
 
+function store_optional_model_preview(string $publicId, string $field, string $suffix): ?string
+{
+    if (!isset($_FILES[$field]) || ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+
+    $limits = config()['limits'];
+    validate_upload($_FILES[$field], (int)$limits['max_preview_bytes'], ['png', 'jpg', 'jpeg']);
+    $previewExt = strtolower(pathinfo((string)$_FILES[$field]['name'], PATHINFO_EXTENSION));
+    $previewName = $publicId . $suffix . '.' . $previewExt;
+    $previewFullPath = rtrim(config()['storage']['previews'], '/\\') . DIRECTORY_SEPARATOR . $previewName;
+    if (!move_uploaded_file((string)$_FILES[$field]['tmp_name'], $previewFullPath)) {
+        error_response('could not store preview', 500);
+    }
+    return $previewName;
+}
+
 function api_publish_model(): void
 {
     ensure_storage();
@@ -268,24 +285,15 @@ function api_publish_model(): void
         error_response('could not store archive', 500);
     }
 
-    $previewPath = null;
-    if (isset($_FILES['preview']) && ($_FILES['preview']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-        validate_upload($_FILES['preview'], (int)$limits['max_preview_bytes'], ['png', 'jpg', 'jpeg']);
-        $previewExt = strtolower(pathinfo((string)$_FILES['preview']['name'], PATHINFO_EXTENSION));
-        $previewName = $publicId . '.' . $previewExt;
-        $previewFullPath = rtrim(config()['storage']['previews'], '/\\') . DIRECTORY_SEPARATOR . $previewName;
-        if (!move_uploaded_file((string)$_FILES['preview']['tmp_name'], $previewFullPath)) {
-            error_response('could not store preview', 500);
-        }
-        $previewPath = $previewName;
-    }
+    $preview05Path = store_optional_model_preview($publicId, 'preview05', '-05');
+    $preview1Path = store_optional_model_preview($publicId, 'preview1', '-1');
 
     $checksum = hash_file('sha256', $archivePath);
     $size = filesize($archivePath);
 
     $stmt = db()->prepare(
-        'INSERT INTO models (public_id, printer_id, model_name, original_credits, license, layers, height_mm, resin_ml, file_size, checksum_sha256, preview_path, download_path)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO models (public_id, printer_id, model_name, original_credits, license, layers, height_mm, resin_ml, file_size, checksum_sha256, preview_05_path, preview_1_path, download_path)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $publicId,
@@ -298,7 +306,8 @@ function api_publish_model(): void
         $resin,
         $size,
         $checksum,
-        $previewPath,
+        $preview05Path,
+        $preview1Path,
         $archiveName,
     ]);
 

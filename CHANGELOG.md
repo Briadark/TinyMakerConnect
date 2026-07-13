@@ -4,6 +4,9 @@
 
 - Added structured model license storage, API output, admin editing and public display.
 - Added database migration `008_model_license`.
+- Added source-layer-safe model publishing support with separate `preview_05` and `preview_1` uploads.
+- Removed the legacy model `preview_path` field from the schema/API in favor of `preview_05_path` and `preview_1_path`.
+- Added database migration `009_model_dual_previews`.
 
 ## 0.1.1 - Connect recovery and backups
 

@@ -17,15 +17,24 @@ if ($id === '') {
     exit;
 }
 
-$stmt = db()->prepare('SELECT preview_path FROM models WHERE public_id = ? AND status = "published" LIMIT 1');
+$typeArg = (string)($_GET['type'] ?? '');
+$column = $typeArg === '1' ? 'preview_1_path' : 'preview_05_path';
+
+$stmt = db()->prepare('SELECT preview_05_path, preview_1_path FROM models WHERE public_id = ? AND status = "published" LIMIT 1');
 $stmt->execute([$id]);
 $row = $stmt->fetch();
-if (!$row || !$row['preview_path']) {
+if (!$row) {
     http_response_code(404);
     exit;
 }
 
-$path = rtrim(config()['storage']['previews'], '/\\') . DIRECTORY_SEPARATOR . $row['preview_path'];
+$previewPath = $row[$column] ?: ($row['preview_05_path'] ?: $row['preview_1_path']);
+if (!$previewPath) {
+    http_response_code(404);
+    exit;
+}
+
+$path = rtrim(config()['storage']['previews'], '/\\') . DIRECTORY_SEPARATOR . $previewPath;
 if (!is_file($path)) {
     http_response_code(404);
     exit;
