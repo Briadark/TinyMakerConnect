@@ -237,11 +237,12 @@ function admin_handle_post(): ?string
         }
         $name = clean_string((string)($_POST['model_name'] ?? ''), 120);
         $credits = clean_string((string)($_POST['original_credits'] ?? ''), 255);
+        $license = clean_string((string)($_POST['license'] ?? 'CC-BY-NC'), 32);
         if ($name === '') {
             throw new RuntimeException('Model name is required.');
         }
-        $stmt = db()->prepare('UPDATE models SET model_name = ?, original_credits = ?, status = ? WHERE id = ?');
-        $stmt->execute([$name, $credits, $status, $id]);
+        $stmt = db()->prepare('UPDATE models SET model_name = ?, original_credits = ?, license = ?, status = ? WHERE id = ?');
+        $stmt->execute([$name, $credits, $license ?: 'CC-BY-NC', $status, $id]);
         return 'Model updated.';
     }
 

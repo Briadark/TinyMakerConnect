@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS models (
   printer_id INT NULL,
   model_name VARCHAR(120) NOT NULL,
   original_credits VARCHAR(255) DEFAULT '',
+  license VARCHAR(32) NOT NULL DEFAULT 'CC-BY-NC',
   layers INT NOT NULL,
   height_mm DECIMAL(8,2) NOT NULL,
   resin_ml DECIMAL(8,2) DEFAULT NULL,

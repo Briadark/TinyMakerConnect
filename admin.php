@@ -163,12 +163,15 @@ try {
             <input name="model_name" value="<?= h($model['model_name']) ?>">
             <div style="height:6px"></div>
             <input name="original_credits" value="<?= h($model['original_credits']) ?>" placeholder="Original credits">
+            <div style="height:6px"></div>
+            <input name="license" value="<?= h($model['license'] ?? 'CC-BY-NC') ?>" placeholder="License" maxlength="32">
           </form>
         </td>
         <td>
           <span class="pill"><?= (int)$model['layers'] ?> layers</span><br>
           <span class="pill"><?= h((string)$model['height_mm']) ?> mm</span><br>
           <span class="pill"><?= $model['resin_ml'] === null ? '-' : h((string)$model['resin_ml']) . ' ml' ?></span><br>
+          <span class="pill"><?= h($model['license'] ?? 'CC-BY-NC') ?></span><br>
           <span class="pill"><?= (int)$model['download_count'] ?> downloads</span><br>
           <span class="pill"><?= (int)$model['rating_count'] ?> ratings</span><br>
           <span class="pill"><?= (int)$model['bookmark_count'] ?> bookmarks</span>

@@ -232,6 +232,7 @@ function model_to_api(array $row): array
         'public_id' => $row['public_id'],
         'model_name' => $row['model_name'],
         'original_credits' => $row['original_credits'],
+        'license' => $row['license'] ?? 'CC-BY-NC',
         'layers' => (int)$row['layers'],
         'height_mm' => (float)$row['height_mm'],
         'resin_ml' => $row['resin_ml'] === null ? null : (float)$row['resin_ml'],

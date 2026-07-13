@@ -147,6 +147,7 @@ curl -X POST https://your-tinymaker-connect-domain.example/api/models \
   -H "X-TinyMaker-Token: PUBLISH_TOKEN_FROM_REGISTER" \
   -F model_name="Demo Model" \
   -F original_credits="Original author / license" \
+  -F license=CC-BY-NC \
   -F layers=240 \
   -F height_mm=12.0 \
   -F resin_ml=8.4 \

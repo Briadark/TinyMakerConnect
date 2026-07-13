@@ -34,6 +34,7 @@ function migrate_database(PDO $pdo): void
               printer_id INT NULL,
               model_name VARCHAR(120) NOT NULL,
               original_credits VARCHAR(255) DEFAULT \'\',
+              license VARCHAR(32) NOT NULL DEFAULT \'CC-BY-NC\',
               layers INT NOT NULL,
               height_mm DECIMAL(8,2) NOT NULL,
               resin_ml DECIMAL(8,2) DEFAULT NULL,
@@ -173,6 +174,10 @@ function migrate_database(PDO $pdo): void
               CONSTRAINT fk_printer_backups_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
             )'
         );
+    });
+
+    apply_migration($pdo, '008_model_license', function (PDO $pdo): void {
+        add_column_if_missing($pdo, 'models', 'license', 'ALTER TABLE models ADD COLUMN license VARCHAR(32) NOT NULL DEFAULT \'CC-BY-NC\' AFTER original_credits');
     });
 }
 

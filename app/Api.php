@@ -246,6 +246,7 @@ function api_publish_model(): void
         error_response('model_name required', 400);
     }
     $credits = clean_string((string)($_POST['original_credits'] ?? ''), 255);
+    $license = clean_string((string)($_POST['license'] ?? 'CC-BY-NC'), 32);
     $layers = (int)($_POST['layers'] ?? 0);
     $height = (float)($_POST['height_mm'] ?? 0);
     $resin = isset($_POST['resin_ml']) && $_POST['resin_ml'] !== '' ? (float)$_POST['resin_ml'] : null;
@@ -283,14 +284,15 @@ function api_publish_model(): void
     $size = filesize($archivePath);
 
     $stmt = db()->prepare(
-        'INSERT INTO models (public_id, printer_id, model_name, original_credits, layers, height_mm, resin_ml, file_size, checksum_sha256, preview_path, download_path)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO models (public_id, printer_id, model_name, original_credits, license, layers, height_mm, resin_ml, file_size, checksum_sha256, preview_path, download_path)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $publicId,
         $printer['id'],
         $name,
         $credits,
+        $license ?: 'CC-BY-NC',
         $layers,
         $height,
         $resin,
@@ -515,9 +517,10 @@ function api_update_model(string $publicId): void
 
     $name = array_key_exists('model_name', $data) ? clean_string((string)$data['model_name'], 120) : $model['model_name'];
     $credits = array_key_exists('original_credits', $data) ? clean_string((string)$data['original_credits'], 255) : $model['original_credits'];
+    $license = array_key_exists('license', $data) ? clean_string((string)$data['license'], 32) : ($model['license'] ?? 'CC-BY-NC');
 
-    $update = db()->prepare('UPDATE models SET model_name = ?, original_credits = ?, status = COALESCE(?, status) WHERE id = ?');
-    $update->execute([$name, $credits, $status, $model['id']]);
+    $update = db()->prepare('UPDATE models SET model_name = ?, original_credits = ?, license = ?, status = COALESCE(?, status) WHERE id = ?');
+    $update->execute([$name, $credits, $license ?: 'CC-BY-NC', $status, $model['id']]);
 
     $stmt = db()->prepare('SELECT * FROM models WHERE id = ?');
     $stmt->execute([$model['id']]);

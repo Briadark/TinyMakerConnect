@@ -53,6 +53,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
       <a class="muted" href="/">Back to models</a>
       <h1><?= h($model['model_name']) ?></h1>
       <div class="muted"><?= h($model['original_credits']) ?></div>
+      <div class="pills"><span class="pill"><?= h($model['license'] ?? 'CC-BY-NC') ?></span></div>
     </div>
     <a class="button" href="/api/models/<?= h($model['public_id']) ?>/download">Download</a>
   </div>
@@ -99,6 +100,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
         </div>
         <h2><?= h($item['model_name']) ?></h2>
         <div class="muted"><?= h($item['original_credits']) ?></div>
+        <div class="social"><span class="pill"><?= h($item['license'] ?? 'CC-BY-NC') ?></span></div>
         <div class="stats">
           <div class="stat"><div class="label">Layers</div><div class="value"><?= (int)$item['layers'] ?></div></div>
           <div class="stat"><div class="label">Height</div><div class="value"><?= h((string)$item['height_mm']) ?> mm</div></div>

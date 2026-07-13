@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added structured model license storage, API output, admin editing and public display.
+- Added database migration `008_model_license`.
+
 ## 0.1.1 - Connect recovery and backups
 
 - Added printer lookup endpoint so firmware can detect when a printer was connected before.
