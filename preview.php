@@ -4,13 +4,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/app_loader.php';
 tinymaker_connect_require_app('bootstrap.php');
 
+cors_headers();
 web_require_installed();
 if (admin_count() < 1) {
     http_response_code(503);
     exit;
 }
 
-$id = clean_string((string)($_GET['id'] ?? ''), 16);
+$id = clean_public_id((string)($_GET['id'] ?? ''));
 if ($id === '') {
     http_response_code(404);
     exit;

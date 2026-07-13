@@ -22,6 +22,8 @@ function config(): array
         $path = __DIR__ . '/config.example.php';
     }
     $config = require $path;
+    $config['storage']['boot_animations'] ??= dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'boot_animations';
+    $config['limits']['max_boot_animation_bytes'] ??= 8 * 1024 * 1024;
     return $config;
 }
 
@@ -116,6 +118,25 @@ function clean_string(string $value, int $maxLen): string
         $value = substr($value, 0, $maxLen);
     }
     return $value;
+}
+
+function clean_public_id(string $value): string
+{
+    $value = strtolower(trim($value));
+    if (!preg_match('/^[a-f0-9]{16}$/', $value)) {
+        error_response('invalid public id', 400);
+    }
+    return $value;
+}
+
+function clean_install_name(string $value): string
+{
+    $value = strtolower($value);
+    $out = preg_replace('/[^a-z0-9_-]/', '', $value) ?? '';
+    if (strlen($out) > 40) {
+        $out = substr($out, 0, 40);
+    }
+    return $out !== '' ? $out : 'downloaded';
 }
 
 function h(?string $value): string
@@ -214,6 +235,26 @@ function model_to_api(array $row): array
         'checksum_sha256' => $row['checksum_sha256'],
         'preview_url' => $row['preview_path'] ? '/preview.php?id=' . rawurlencode($row['public_id']) : null,
         'download_url' => '/api/models/' . rawurlencode($row['public_id']) . '/download',
+        'status' => $row['status'],
+        'created_at' => $row['created_at'],
+    ];
+}
+
+function boot_animation_to_api(array $row): array
+{
+    return [
+        'public_id' => $row['public_id'],
+        'animation_name' => $row['animation_name'],
+        'install_name' => $row['install_name'],
+        'version' => $row['version'] ?? '1.0.0',
+        'original_credits' => $row['original_credits'],
+        'description' => $row['description'] ?? '',
+        'license' => $row['license'] ?? 'CC-BY-NC',
+        'file_size' => (int)$row['file_size'],
+        'download_count' => (int)($row['download_count'] ?? 0),
+        'checksum_sha256' => $row['checksum_sha256'],
+        'preview_url' => '/api/boot-animations/' . rawurlencode($row['public_id']) . '/preview',
+        'download_url' => '/api/boot-animations/' . rawurlencode($row['public_id']) . '/download',
         'status' => $row['status'],
         'created_at' => $row['created_at'],
     ];

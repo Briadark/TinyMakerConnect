@@ -64,6 +64,7 @@ endif;
 
 $stats = admin_stats();
 $models = admin_models();
+$bootAnimations = admin_boot_animations();
 $printers = admin_printers();
 $admins = admin_admins();
 $leaderboard = admin_leaderboard();
@@ -84,6 +85,7 @@ $csrf = csrf_token();
     input,select{width:100%;border:1px solid var(--line);border-radius:6px;background:#101113;color:var(--text);padding:8px;font:inherit}button,.button{border:0;border-radius:7px;background:var(--accent);color:white;padding:8px 10px;font-weight:700;text-decoration:none;cursor:pointer}.secondary{background:#3a3d44}.danger{background:#7b2f2f}
     .inline{display:flex;gap:6px;align-items:center}.msg{padding:10px;border-radius:8px;margin-bottom:12px}.err{border:1px solid var(--bad);background:#321b1b;color:#ffd2d2}.ok{border:1px solid var(--ok);background:#18331e;color:#cbffd6}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 8px;color:var(--muted)}
     .moderation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}.moderation form{margin:0}.moderation .block-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}
+    .uploadGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;align-items:end}.uploadGrid button{min-height:37px}
     @media(max-width:760px){.top{display:block}table,thead,tbody,tr,th,td{display:block}th{display:none}td{border-bottom:0}tr{border-bottom:1px solid var(--line);padding:8px}.moderation,.moderation .block-form{grid-template-columns:1fr}}
   </style>
 </head>
@@ -104,6 +106,7 @@ $csrf = csrf_token();
     <div class="stat"><div class="label">Published</div><div class="value"><?= (int)$stats['published'] ?></div></div>
     <div class="stat"><div class="label">Hidden</div><div class="value"><?= (int)$stats['hidden'] ?></div></div>
     <div class="stat"><div class="label">Removed</div><div class="value"><?= (int)$stats['removed'] ?></div></div>
+    <div class="stat"><div class="label">Boot animations</div><div class="value"><?= (int)$stats['boot_animations'] ?></div></div>
     <div class="stat"><div class="label">Printers</div><div class="value"><?= (int)$stats['printers'] ?></div></div>
     <div class="stat"><div class="label">Blocked</div><div class="value"><?= (int)$stats['blocked'] ?></div></div>
     <div class="stat"><div class="label">Downloads</div><div class="value"><?= (int)$stats['downloads'] ?></div></div>
@@ -154,6 +157,78 @@ $csrf = csrf_token();
         </td>
       </tr>
     <?php endforeach; ?>
+    </tbody>
+  </table>
+
+  <h2>Boot animations</h2>
+  <div class="panel" style="margin-bottom:10px">
+    <form method="post" enctype="multipart/form-data" class="uploadGrid">
+      <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+      <input type="hidden" name="action" value="boot_animation_upload">
+      <input name="animation_name" placeholder="Animation name" required maxlength="120">
+      <input name="install_name" placeholder="Install name, optional">
+      <input name="version" value="1.0.0" placeholder="Version">
+      <input name="original_credits" placeholder="Original credits">
+      <input name="description" placeholder="Short description">
+      <input name="license" value="CC-BY-NC" maxlength="32">
+      <input name="animation" type="file" accept=".tmb" required>
+      <button type="submit">Upload animation</button>
+    </form>
+    <p class="muted">Uploads must be TinyMaker <code>.tmb</code> files. The install name becomes the filename on the printer SD card.</p>
+  </div>
+  <table>
+    <thead><tr><th>Animation</th><th>Details</th><th>Printer</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+    <?php foreach ($bootAnimations as $anim): ?>
+      <tr>
+        <td>
+          <form method="post" enctype="multipart/form-data" id="boot-animation-<?= (int)$anim['id'] ?>">
+            <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+            <input type="hidden" name="action" value="boot_animation_update">
+            <input type="hidden" name="animation_id" value="<?= (int)$anim['id'] ?>">
+            <input name="animation_name" value="<?= h($anim['animation_name']) ?>">
+            <div style="height:6px"></div>
+            <input name="install_name" value="<?= h($anim['install_name']) ?>" placeholder="Install name">
+            <div style="height:6px"></div>
+            <input name="version" value="<?= h($anim['version'] ?? '1.0.0') ?>" placeholder="Version">
+            <div style="height:6px"></div>
+            <input name="original_credits" value="<?= h($anim['original_credits']) ?>" placeholder="Original credits">
+          </form>
+        </td>
+        <td>
+          <input name="description" form="boot-animation-<?= (int)$anim['id'] ?>" value="<?= h($anim['description']) ?>" placeholder="Description">
+          <div style="height:6px"></div>
+          <input name="license" form="boot-animation-<?= (int)$anim['id'] ?>" value="<?= h($anim['license']) ?>" placeholder="License">
+          <div style="height:6px"></div>
+          <input name="animation" form="boot-animation-<?= (int)$anim['id'] ?>" type="file" accept=".tmb">
+          <div style="height:6px"></div>
+          <span class="pill"><?= (int)$anim['file_size'] ?> bytes</span><br>
+          <span class="pill">v<?= h($anim['version'] ?? '1.0.0') ?></span><br>
+          <span class="pill"><?= (int)$anim['download_count'] ?> installs</span>
+        </td>
+        <td>
+          <?= h($anim['printer_name'] ?: $anim['printer_public_id'] ?: 'Admin') ?><br>
+          <?php if ((int)$anim['printer_blocked'] === 1): ?><span class="pill">blocked</span><?php endif; ?>
+        </td>
+        <td>
+          <select name="status" form="boot-animation-<?= (int)$anim['id'] ?>">
+            <?php foreach (['published', 'hidden', 'removed'] as $status): ?>
+              <option value="<?= h($status) ?>" <?= $anim['status'] === $status ? 'selected' : '' ?>><?= h($status) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </td>
+        <td>
+          <div class="inline">
+            <?php if ($anim['status'] === 'published'): ?><a class="button secondary" href="/api/boot-animations/<?= h($anim['public_id']) ?>/download">Download</a><?php endif; ?>
+            <button type="submit" form="boot-animation-<?= (int)$anim['id'] ?>">Save</button>
+            <button class="danger" type="submit" name="delete_animation" value="1" form="boot-animation-<?= (int)$anim['id'] ?>" onclick="return confirm('Delete this boot animation from TinyMaker Connect?');">Delete</button>
+          </div>
+        </td>
+      </tr>
+    <?php endforeach; ?>
+    <?php if (!$bootAnimations): ?>
+      <tr><td colspan="5" class="muted">No boot animations uploaded yet.</td></tr>
+    <?php endif; ?>
     </tbody>
   </table>
 

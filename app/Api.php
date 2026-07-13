@@ -92,6 +92,7 @@ function api_leaderboard(): void
 
 function api_get_model(string $publicId): void
 {
+    $publicId = clean_public_id($publicId);
     $stmt = db()->prepare('SELECT * FROM models WHERE public_id = ? AND status = "published" LIMIT 1');
     $stmt->execute([$publicId]);
     $model = $stmt->fetch();
@@ -185,8 +186,192 @@ function api_publish_model(): void
     json_response(['ok' => true, 'model' => model_to_api($stmt->fetch())], 201);
 }
 
+function api_list_boot_animations(bool $mine = false): void
+{
+    if ($mine) {
+        $printer = require_printer();
+        $stmt = db()->prepare('SELECT * FROM boot_animations WHERE printer_id = ? AND status != "removed" ORDER BY created_at DESC LIMIT 100');
+        $stmt->execute([$printer['id']]);
+    } else {
+        $stmt = db()->query('SELECT * FROM boot_animations WHERE status = "published" ORDER BY created_at DESC LIMIT 100');
+    }
+
+    json_response(['ok' => true, 'items' => array_map('boot_animation_to_api', $stmt->fetchAll())]);
+}
+
+function api_publish_boot_animation(): void
+{
+    ensure_storage();
+    $printer = require_printer();
+    $limits = config()['limits'];
+
+    $name = clean_string((string)($_POST['animation_name'] ?? ''), 120);
+    if ($name === '') {
+        error_response('animation_name required', 400);
+    }
+    $credits = clean_string((string)($_POST['original_credits'] ?? ''), 255);
+    $description = clean_string((string)($_POST['description'] ?? ''), 255);
+    $license = clean_string((string)($_POST['license'] ?? 'CC-BY-NC'), 32);
+    $version = clean_string((string)($_POST['version'] ?? '1.0.0'), 32);
+    $installName = clean_install_name((string)($_POST['install_name'] ?? $name));
+
+    if (!isset($_FILES['animation'])) {
+        error_response('animation required', 400);
+    }
+    validate_upload($_FILES['animation'], (int)$limits['max_boot_animation_bytes'], ['tmb']);
+
+    $tmpPath = (string)$_FILES['animation']['tmp_name'];
+    $fh = fopen($tmpPath, 'rb');
+    $magic = $fh ? fread($fh, 4) : false;
+    if ($fh) {
+        fclose($fh);
+    }
+    if ($magic !== 'TMB1') {
+        error_response('not a TMB1 animation', 422);
+    }
+
+    $publicId = public_id();
+    $fileName = $publicId . '.tmb';
+    $filePath = rtrim(config()['storage']['boot_animations'], '/\\') . DIRECTORY_SEPARATOR . $fileName;
+    if (!move_uploaded_file($tmpPath, $filePath)) {
+        error_response('could not store animation', 500);
+    }
+
+    $checksum = hash_file('sha256', $filePath);
+    $size = filesize($filePath);
+
+    $stmt = db()->prepare(
+        'INSERT INTO boot_animations (public_id, printer_id, animation_name, install_name, version, original_credits, description, license, file_size, checksum_sha256, download_path)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    $stmt->execute([
+        $publicId,
+        $printer['id'],
+        $name,
+        $installName,
+        $version ?: '1.0.0',
+        $credits,
+        $description,
+        $license ?: 'CC-BY-NC',
+        $size,
+        $checksum,
+        $fileName,
+    ]);
+
+    $stmt = db()->prepare('SELECT * FROM boot_animations WHERE public_id = ?');
+    $stmt->execute([$publicId]);
+    json_response(['ok' => true, 'animation' => boot_animation_to_api($stmt->fetch())], 201);
+}
+
+function api_update_boot_animation(string $publicId): void
+{
+    $publicId = clean_public_id($publicId);
+    $printer = require_printer();
+    parse_str(file_get_contents('php://input') ?: '', $body);
+    $data = array_merge($_POST, $body);
+
+    $stmt = db()->prepare('SELECT * FROM boot_animations WHERE public_id = ? AND printer_id = ? LIMIT 1');
+    $stmt->execute([$publicId, $printer['id']]);
+    $animation = $stmt->fetch();
+    if (!$animation) {
+        error_response('animation not found', 404);
+    }
+
+    $status = $data['status'] ?? null;
+    if ($status !== null && !in_array($status, ['published', 'hidden'], true)) {
+        error_response('invalid status', 400);
+    }
+
+    $name = array_key_exists('animation_name', $data) ? clean_string((string)$data['animation_name'], 120) : $animation['animation_name'];
+    $credits = array_key_exists('original_credits', $data) ? clean_string((string)$data['original_credits'], 255) : $animation['original_credits'];
+    $description = array_key_exists('description', $data) ? clean_string((string)$data['description'], 255) : $animation['description'];
+    $installName = array_key_exists('install_name', $data) ? clean_install_name((string)$data['install_name']) : $animation['install_name'];
+    $version = array_key_exists('version', $data) ? clean_string((string)$data['version'], 32) : ($animation['version'] ?? '1.0.0');
+    $license = array_key_exists('license', $data) ? clean_string((string)$data['license'], 32) : ($animation['license'] ?? 'CC-BY-NC');
+
+    $update = db()->prepare('UPDATE boot_animations SET animation_name = ?, install_name = ?, version = ?, original_credits = ?, description = ?, license = ?, status = COALESCE(?, status) WHERE id = ?');
+    $update->execute([$name, $installName, $version ?: '1.0.0', $credits, $description, $license ?: 'CC-BY-NC', $status, $animation['id']]);
+
+    $stmt = db()->prepare('SELECT * FROM boot_animations WHERE id = ?');
+    $stmt->execute([$animation['id']]);
+    json_response(['ok' => true, 'animation' => boot_animation_to_api($stmt->fetch())]);
+}
+
+function api_remove_boot_animation(string $publicId): void
+{
+    $publicId = clean_public_id($publicId);
+    $printer = require_printer();
+    $stmt = db()->prepare('UPDATE boot_animations SET status = "removed" WHERE public_id = ? AND printer_id = ?');
+    $stmt->execute([$publicId, $printer['id']]);
+    if ($stmt->rowCount() < 1) {
+        error_response('animation not found', 404);
+    }
+    json_response(['ok' => true, 'removed' => true]);
+}
+
+function api_download_boot_animation(string $publicId): void
+{
+    $publicId = clean_public_id($publicId);
+    $stmt = db()->prepare('SELECT * FROM boot_animations WHERE public_id = ? AND status = "published" LIMIT 1');
+    $stmt->execute([$publicId]);
+    $animation = $stmt->fetch();
+    if (!$animation) {
+        error_response('animation not found', 404);
+    }
+
+    $path = rtrim(config()['storage']['boot_animations'], '/\\') . DIRECTORY_SEPARATOR . $animation['download_path'];
+    if (!is_file($path)) {
+        error_response('file missing', 404);
+    }
+
+    $printer = optional_printer();
+    if ($printer) {
+        $log = db()->prepare('INSERT IGNORE INTO boot_animation_downloads (animation_id, printer_id, ip_hash) VALUES (?, ?, ?)');
+        $log->execute([$animation['id'], $printer['id'], ip_hash()]);
+        if ($log->rowCount() > 0) {
+            $count = db()->prepare('UPDATE boot_animations SET download_count = download_count + 1 WHERE id = ?');
+            $count->execute([$animation['id']]);
+        }
+    } else {
+        $log = db()->prepare('INSERT INTO boot_animation_downloads (animation_id, ip_hash) VALUES (?, ?)');
+        $log->execute([$animation['id'], ip_hash()]);
+    }
+    $downloadName = preg_replace('/[^A-Za-z0-9_.-]/', '_', $animation['install_name']) . '.tmb';
+
+    cors_headers();
+    header('Content-Type: application/octet-stream');
+    header('Content-Length: ' . filesize($path));
+    header('Content-Disposition: attachment; filename="' . $downloadName . '"');
+    readfile($path);
+    exit;
+}
+
+function api_preview_boot_animation(string $publicId): void
+{
+    $publicId = clean_public_id($publicId);
+    $stmt = db()->prepare('SELECT * FROM boot_animations WHERE public_id = ? AND status = "published" LIMIT 1');
+    $stmt->execute([$publicId]);
+    $animation = $stmt->fetch();
+    if (!$animation) {
+        error_response('animation not found', 404);
+    }
+
+    $path = rtrim(config()['storage']['boot_animations'], '/\\') . DIRECTORY_SEPARATOR . $animation['download_path'];
+    if (!is_file($path)) {
+        error_response('file missing', 404);
+    }
+
+    cors_headers();
+    header('Content-Type: application/octet-stream');
+    header('Content-Length: ' . filesize($path));
+    header('Cache-Control: public, max-age=86400');
+    readfile($path);
+    exit;
+}
+
 function api_update_model(string $publicId): void
 {
+    $publicId = clean_public_id($publicId);
     $printer = require_printer();
     parse_str(file_get_contents('php://input') ?: '', $body);
     $data = array_merge($_POST, $body);
@@ -216,6 +401,7 @@ function api_update_model(string $publicId): void
 
 function api_remove_model(string $publicId): void
 {
+    $publicId = clean_public_id($publicId);
     $printer = require_printer();
     $stmt = db()->prepare('UPDATE models SET status = "removed" WHERE public_id = ? AND printer_id = ?');
     $stmt->execute([$publicId, $printer['id']]);
@@ -227,6 +413,7 @@ function api_remove_model(string $publicId): void
 
 function api_download_model(string $publicId): void
 {
+    $publicId = clean_public_id($publicId);
     $stmt = db()->prepare('SELECT * FROM models WHERE public_id = ? AND status = "published" LIMIT 1');
     $stmt->execute([$publicId]);
     $model = $stmt->fetch();
@@ -265,6 +452,7 @@ function api_download_model(string $publicId): void
 
 function api_rate_model(string $publicId): void
 {
+    $publicId = clean_public_id($publicId);
     $printer = require_printer();
     $rating = (int)($_POST['rating'] ?? 0);
     if ($rating < 1 || $rating > 5) {
@@ -295,6 +483,7 @@ function api_rate_model(string $publicId): void
 
 function api_bookmark_model(string $publicId, bool $bookmark): void
 {
+    $publicId = clean_public_id($publicId);
     $printer = require_printer();
     $model = find_published_model($publicId);
 
@@ -321,6 +510,7 @@ function api_bookmark_model(string $publicId, bool $bookmark): void
 
 function find_published_model(string $publicId): array
 {
+    $publicId = clean_public_id($publicId);
     $stmt = db()->prepare('SELECT * FROM models WHERE public_id = ? AND status = "published" LIMIT 1');
     $stmt->execute([$publicId]);
     $model = $stmt->fetch();

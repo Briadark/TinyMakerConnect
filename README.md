@@ -44,6 +44,7 @@ Suggested server layout:
   storage/
     models/
     previews/
+    boot_animations/
     tmp/
 ```
 
@@ -58,6 +59,7 @@ This folder is intended to be drag-and-drop deployable. The root `.htaccess` blo
 /admin.php                 Admin dashboard
 /health.php                Deployment health check
 /api/models                API list/publish
+/api/boot-animations       API list boot animations
 /api/printers/register     Register printer
 /api/leaderboard           Public leaderboard data
 ```
@@ -67,6 +69,7 @@ This folder is intended to be drag-and-drop deployable. The root `.htaccess` blo
 The admin dashboard currently includes:
 
 - model counts by status
+- boot animation upload, replacement, delete and moderation
 - download/rating/bookmark counts
 - latest published/hidden/removed models
 - edit model name, credits and status
@@ -111,6 +114,16 @@ Manage published models:
 curl https://your-tinymaker-connect-domain.example/api/printers/me/models \
   -H "X-TinyMaker-Token: PUBLISH_TOKEN"
 ```
+
+List boot animations:
+
+```bash
+curl https://your-tinymaker-connect-domain.example/api/boot-animations
+```
+
+Boot animations are uploaded, replaced and deleted from the admin dashboard for now. The API exposes published animations and direct `.tmb` downloads so firmware can install them through its local boot-animation install endpoint.
+Install counts increase at most once per printer token; preview rendering does not increment the install counter.
+Boot animation records include a version and checksum. Firmware that installs from Connect can store optional `/bootanim/{install_name}.json` metadata next to the `.tmb`; manually copied `.tmb` files still work, but version/update detection requires the JSON metadata.
 
 Rate a model once per printer:
 

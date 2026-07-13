@@ -46,11 +46,13 @@ function build_config(array $input): array
         'storage' => [
             'models' => $storageBase . DIRECTORY_SEPARATOR . 'models',
             'previews' => $storageBase . DIRECTORY_SEPARATOR . 'previews',
+            'boot_animations' => $storageBase . DIRECTORY_SEPARATOR . 'boot_animations',
             'tmp' => $storageBase . DIRECTORY_SEPARATOR . 'tmp',
         ],
         'limits' => [
             'max_archive_bytes' => 120 * 1024 * 1024,
             'max_preview_bytes' => 2 * 1024 * 1024,
+            'max_boot_animation_bytes' => 8 * 1024 * 1024,
         ],
         'security' => [
             'server_salt' => bin2hex(random_bytes(32)),
@@ -92,7 +94,7 @@ function mysql_form(?string $error = null): void
     $body .= '<label>Database user</label><input name="db_user" required value="' . form_value('db_user') . '">';
     $body .= '<label>Database password</label><input name="db_pass" type="password" value="' . form_value('db_pass') . '">';
     $body .= '<label>Storage base path</label><input name="storage_base" required value="' . form_value('storage_base', $defaultStorage) . '">';
-    $body .= '<p class="muted">The installer will create <code>models</code>, <code>previews</code>, and <code>tmp</code> folders inside this path.</p>';
+    $body .= '<p class="muted">The installer will create <code>models</code>, <code>previews</code>, <code>boot_animations</code>, and <code>tmp</code> folders inside this path.</p>';
     $body .= '<button type="submit">Save and continue</button></form>';
     install_page('Configure MySQL', $body);
 }

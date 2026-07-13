@@ -38,6 +38,41 @@ CREATE TABLE IF NOT EXISTS models (
 CREATE INDEX idx_models_status_created ON models(status, created_at);
 CREATE INDEX idx_models_printer_status ON models(printer_id, status);
 
+CREATE TABLE IF NOT EXISTS boot_animations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  public_id CHAR(16) NOT NULL UNIQUE,
+  printer_id INT NULL,
+  animation_name VARCHAR(120) NOT NULL,
+  install_name VARCHAR(40) NOT NULL,
+  version VARCHAR(32) NOT NULL DEFAULT '1.0.0',
+  original_credits VARCHAR(255) DEFAULT '',
+  description VARCHAR(255) DEFAULT '',
+  license VARCHAR(32) NOT NULL DEFAULT 'CC-BY-NC',
+  file_size BIGINT NOT NULL,
+  download_count INT NOT NULL DEFAULT 0,
+  checksum_sha256 CHAR(64) NOT NULL,
+  download_path VARCHAR(255) NOT NULL,
+  status ENUM('pending','published','hidden','removed') NOT NULL DEFAULT 'published',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_boot_animations_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+);
+
+CREATE INDEX idx_boot_animations_status_created ON boot_animations(status, created_at);
+CREATE INDEX idx_boot_animations_printer_status ON boot_animations(printer_id, status);
+
+CREATE TABLE IF NOT EXISTS boot_animation_downloads (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  animation_id INT NOT NULL,
+  printer_id INT NULL,
+  ip_hash CHAR(64) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_boot_animation_downloads_animation FOREIGN KEY (animation_id) REFERENCES boot_animations(id),
+  CONSTRAINT fk_boot_animation_downloads_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+);
+CREATE INDEX idx_boot_animation_downloads_printer ON boot_animation_downloads(printer_id);
+CREATE UNIQUE INDEX idx_boot_animation_downloads_animation_printer_unique ON boot_animation_downloads(animation_id, printer_id);
+
 CREATE TABLE IF NOT EXISTS model_downloads (
   id INT AUTO_INCREMENT PRIMARY KEY,
   model_id INT NOT NULL,

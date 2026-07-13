@@ -116,6 +116,52 @@ function migrate_database(PDO $pdo): void
     apply_migration($pdo, '003_leaderboard_opt_in', function (PDO $pdo): void {
         add_column_if_missing($pdo, 'printers', 'leaderboard_opt_in', 'ALTER TABLE printers ADD COLUMN leaderboard_opt_in TINYINT(1) NOT NULL DEFAULT 0 AFTER printer_name');
     });
+
+    apply_migration($pdo, '004_boot_animations', function (PDO $pdo): void {
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS boot_animations (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              public_id CHAR(16) NOT NULL UNIQUE,
+              printer_id INT NULL,
+              animation_name VARCHAR(120) NOT NULL,
+              install_name VARCHAR(40) NOT NULL,
+              version VARCHAR(32) NOT NULL DEFAULT \'1.0.0\',
+              original_credits VARCHAR(255) DEFAULT \'\',
+              description VARCHAR(255) DEFAULT \'\',
+              license VARCHAR(32) NOT NULL DEFAULT \'CC-BY-NC\',
+              file_size BIGINT NOT NULL,
+              download_count INT NOT NULL DEFAULT 0,
+              checksum_sha256 CHAR(64) NOT NULL,
+              download_path VARCHAR(255) NOT NULL,
+              status ENUM(\'pending\',\'published\',\'hidden\',\'removed\') NOT NULL DEFAULT \'published\',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              CONSTRAINT fk_boot_animations_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+            )'
+        );
+        add_index_if_missing($pdo, 'boot_animations', 'idx_boot_animations_status_created', 'CREATE INDEX idx_boot_animations_status_created ON boot_animations(status, created_at)');
+        add_index_if_missing($pdo, 'boot_animations', 'idx_boot_animations_printer_status', 'CREATE INDEX idx_boot_animations_printer_status ON boot_animations(printer_id, status)');
+    });
+
+    apply_migration($pdo, '005_boot_animation_downloads', function (PDO $pdo): void {
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS boot_animation_downloads (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              animation_id INT NOT NULL,
+              printer_id INT NULL,
+              ip_hash CHAR(64) DEFAULT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_boot_animation_downloads_animation FOREIGN KEY (animation_id) REFERENCES boot_animations(id),
+              CONSTRAINT fk_boot_animation_downloads_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+            )'
+        );
+        add_index_if_missing($pdo, 'boot_animation_downloads', 'idx_boot_animation_downloads_printer', 'CREATE INDEX idx_boot_animation_downloads_printer ON boot_animation_downloads(printer_id)');
+        add_index_if_missing($pdo, 'boot_animation_downloads', 'idx_boot_animation_downloads_animation_printer_unique', 'CREATE UNIQUE INDEX idx_boot_animation_downloads_animation_printer_unique ON boot_animation_downloads(animation_id, printer_id)');
+    });
+
+    apply_migration($pdo, '006_boot_animation_version', function (PDO $pdo): void {
+        add_column_if_missing($pdo, 'boot_animations', 'version', 'ALTER TABLE boot_animations ADD COLUMN version VARCHAR(32) NOT NULL DEFAULT \'1.0.0\' AFTER install_name');
+    });
 }
 
 function apply_migration(PDO $pdo, string $migration, callable $callback): void

@@ -43,12 +43,24 @@ try {
         api_publish_model();
     }
 
+    if ($parts === ['api', 'boot-animations'] && $method === 'GET') {
+        api_list_boot_animations(false);
+    }
+
     if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'models' && $method === 'GET') {
         api_get_model($parts[2]);
     }
 
     if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'models' && $parts[3] === 'download' && $method === 'GET') {
         api_download_model($parts[2]);
+    }
+
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'boot-animations' && $parts[3] === 'download' && $method === 'GET') {
+        api_download_boot_animation($parts[2]);
+    }
+
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'boot-animations' && $parts[3] === 'preview' && $method === 'GET') {
+        api_preview_boot_animation($parts[2]);
     }
 
     if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'models' && $parts[3] === 'rating' && $method === 'POST') {

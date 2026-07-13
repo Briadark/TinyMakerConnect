@@ -86,6 +86,7 @@ function admin_stats(): array
         'published' => (int)db()->query('SELECT COUNT(*) FROM models WHERE status = "published"')->fetchColumn(),
         'hidden' => (int)db()->query('SELECT COUNT(*) FROM models WHERE status = "hidden"')->fetchColumn(),
         'removed' => (int)db()->query('SELECT COUNT(*) FROM models WHERE status = "removed"')->fetchColumn(),
+        'boot_animations' => (int)db()->query('SELECT COUNT(*) FROM boot_animations WHERE status = "published"')->fetchColumn(),
         'printers' => (int)db()->query('SELECT COUNT(*) FROM printers')->fetchColumn(),
         'blocked' => (int)db()->query('SELECT COUNT(*) FROM printers WHERE blocked = 1')->fetchColumn(),
         'downloads' => (int)db()->query('SELECT COALESCE(SUM(download_count), 0) FROM models')->fetchColumn(),
@@ -104,6 +105,42 @@ function admin_models(): array
          LIMIT 100'
     );
     return $stmt->fetchAll();
+}
+
+function admin_boot_animations(): array
+{
+    $stmt = db()->query(
+        'SELECT a.*, p.public_id AS printer_public_id, p.printer_name, p.blocked AS printer_blocked
+         FROM boot_animations a
+         LEFT JOIN printers p ON p.id = a.printer_id
+         ORDER BY a.created_at DESC
+         LIMIT 100'
+    );
+    return $stmt->fetchAll();
+}
+
+function admin_validate_boot_animation_file(array $file): string
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Animation file is required.');
+    }
+    if ((int)$file['size'] <= 0 || (int)$file['size'] > (int)config()['limits']['max_boot_animation_bytes']) {
+        throw new RuntimeException('Animation file is too large.');
+    }
+    $ext = strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION));
+    if ($ext !== 'tmb') {
+        throw new RuntimeException('Only .tmb boot animation files are supported.');
+    }
+    $tmpPath = (string)$file['tmp_name'];
+    $fh = fopen($tmpPath, 'rb');
+    $magic = $fh ? fread($fh, 4) : false;
+    if ($fh) {
+        fclose($fh);
+    }
+    if ($magic !== 'TMB1') {
+        throw new RuntimeException('File is not a TMB1 animation.');
+    }
+    return $tmpPath;
 }
 
 function admin_printers(): array
@@ -193,6 +230,96 @@ function admin_handle_post(): ?string
         $stmt = db()->prepare('UPDATE models SET model_name = ?, original_credits = ?, status = ? WHERE id = ?');
         $stmt->execute([$name, $credits, $status, $id]);
         return 'Model updated.';
+    }
+
+    if ($action === 'boot_animation_upload') {
+        ensure_storage();
+        $name = clean_string((string)($_POST['animation_name'] ?? ''), 120);
+        $credits = clean_string((string)($_POST['original_credits'] ?? ''), 255);
+        $description = clean_string((string)($_POST['description'] ?? ''), 255);
+        $license = clean_string((string)($_POST['license'] ?? 'CC-BY-NC'), 32);
+        $version = clean_string((string)($_POST['version'] ?? '1.0.0'), 32);
+        $installName = clean_install_name((string)($_POST['install_name'] ?? $name));
+        if ($name === '') {
+            throw new RuntimeException('Animation name is required.');
+        }
+        $tmpPath = admin_validate_boot_animation_file($_FILES['animation'] ?? []);
+
+        $publicId = public_id();
+        $fileName = $publicId . '.tmb';
+        $filePath = rtrim(config()['storage']['boot_animations'], '/\\') . DIRECTORY_SEPARATOR . $fileName;
+        if (!move_uploaded_file($tmpPath, $filePath)) {
+            throw new RuntimeException('Could not store boot animation.');
+        }
+        $stmt = db()->prepare(
+            'INSERT INTO boot_animations (public_id, animation_name, install_name, version, original_credits, description, license, file_size, checksum_sha256, download_path)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            $publicId,
+            $name,
+            $installName,
+            $version ?: '1.0.0',
+            $credits,
+            $description,
+            $license ?: 'CC-BY-NC',
+            filesize($filePath),
+            hash_file('sha256', $filePath),
+            $fileName,
+        ]);
+        return 'Boot animation uploaded.';
+    }
+
+    if ($action === 'boot_animation_update') {
+        $id = (int)($_POST['animation_id'] ?? 0);
+        if (isset($_POST['delete_animation'])) {
+            $existsStmt = db()->prepare('SELECT id FROM boot_animations WHERE id = ? LIMIT 1');
+            $existsStmt->execute([$id]);
+            if (!$existsStmt->fetch()) {
+                throw new RuntimeException('Boot animation not found.');
+            }
+            $stmt = db()->prepare('UPDATE boot_animations SET status = "removed" WHERE id = ?');
+            $stmt->execute([$id]);
+            return 'Boot animation deleted.';
+        }
+        $status = (string)($_POST['status'] ?? '');
+        if (!in_array($status, ['published', 'hidden', 'removed'], true)) {
+            throw new RuntimeException('Invalid boot animation status.');
+        }
+        $name = clean_string((string)($_POST['animation_name'] ?? ''), 120);
+        $installName = clean_install_name((string)($_POST['install_name'] ?? $name));
+        $credits = clean_string((string)($_POST['original_credits'] ?? ''), 255);
+        $description = clean_string((string)($_POST['description'] ?? ''), 255);
+        $license = clean_string((string)($_POST['license'] ?? 'CC-BY-NC'), 32);
+        $version = clean_string((string)($_POST['version'] ?? '1.0.0'), 32);
+        if ($name === '') {
+            throw new RuntimeException('Animation name is required.');
+        }
+        $replaceFile = isset($_FILES['animation']) && ($_FILES['animation']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if ($replaceFile) {
+            ensure_storage();
+            $tmpPath = admin_validate_boot_animation_file($_FILES['animation']);
+            $existingStmt = db()->prepare('SELECT download_path FROM boot_animations WHERE id = ? LIMIT 1');
+            $existingStmt->execute([$id]);
+            $existing = $existingStmt->fetch();
+            if (!$existing) {
+                throw new RuntimeException('Boot animation not found.');
+            }
+            $fileName = basename((string)$existing['download_path']);
+            if ($fileName === '') {
+                $fileName = public_id() . '.tmb';
+            }
+            $filePath = rtrim(config()['storage']['boot_animations'], '/\\') . DIRECTORY_SEPARATOR . $fileName;
+            if (!move_uploaded_file($tmpPath, $filePath)) {
+                throw new RuntimeException('Could not replace boot animation file.');
+            }
+            $stmt = db()->prepare('UPDATE boot_animations SET animation_name = ?, install_name = ?, version = ?, original_credits = ?, description = ?, license = ?, file_size = ?, checksum_sha256 = ?, download_path = ?, status = ? WHERE id = ?');
+            $stmt->execute([$name, $installName, $version ?: '1.0.0', $credits, $description, $license ?: 'CC-BY-NC', filesize($filePath), hash_file('sha256', $filePath), $fileName, $status, $id]);
+            return 'Boot animation file replaced.';
+        }
+        $stmt = db()->prepare('UPDATE boot_animations SET animation_name = ?, install_name = ?, version = ?, original_credits = ?, description = ?, license = ?, status = ? WHERE id = ?');
+        $stmt->execute([$name, $installName, $version ?: '1.0.0', $credits, $description, $license ?: 'CC-BY-NC', $status, $id]);
+        return 'Boot animation updated.';
     }
 
     if ($action === 'printer_block') {
