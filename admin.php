@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app_loader.php';
 tinymaker_connect_require_app('Admin.php');
+tinymaker_connect_require_app('Footer.php');
 
 if (!config_is_installed() || admin_count() < 1) {
     redirect_to('/install.php');
@@ -43,10 +44,11 @@ if (!$admin):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TinyMaker Connect Admin Login</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     :root{color-scheme:dark;--bg:#111214;--panel:#1b1d20;--text:#f2f2f2;--muted:#a5a7ad;--line:#33363d;--accent:#e8720c;--bad:#d95c5c}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}main{width:min(440px,100%);margin:0 auto;padding:40px 20px}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px}h1{margin:0 0 6px}.muted{color:var(--muted)}label{display:block;margin:14px 0 6px}input{width:100%;border:1px solid var(--line);border-radius:7px;background:#101113;color:var(--text);padding:11px;font:inherit}button{width:100%;border:0;border-radius:8px;background:var(--accent);color:white;padding:12px 14px;font-weight:700;margin-top:16px}.err{border:1px solid var(--bad);background:#321b1b;color:#ffd2d2;padding:10px;border-radius:8px;margin-bottom:12px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px}h1{margin:0 0 6px}.muted{color:var(--muted)}label{display:block;margin:14px 0 6px}input{width:100%;border:1px solid var(--line);border-radius:7px;background:#101113;color:var(--text);padding:11px;font:inherit}button{width:100%;border:0;border-radius:8px;background:var(--accent);color:white;padding:12px 14px;font-weight:700;margin-top:16px}.err{border:1px solid var(--bad);background:#321b1b;color:#ffd2d2;padding:10px;border-radius:8px;margin-bottom:12px}<?= tinymaker_connect_footer_css() ?>
   </style>
 </head>
 <body><main><h1>TinyMaker Connect Admin</h1><p class="muted">Login to manage the model library.</p><div class="card">
@@ -57,7 +59,7 @@ if (!$admin):
   <label>Password</label><input name="password" type="password" required>
   <button type="submit">Login</button>
 </form>
-</div></main></body></html>
+</div><?= tinymaker_connect_footer() ?></main></body></html>
 <?php
 exit;
 endif;
@@ -83,6 +85,7 @@ try {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TinyMaker Connect Admin</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     :root{color-scheme:dark;--bg:#111214;--panel:#1b1d20;--text:#f2f2f2;--muted:#a5a7ad;--line:#33363d;--accent:#e8720c;--bad:#d95c5c;--ok:#3d9b55}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}main{width:min(1180px,100%);margin:0 auto;padding:22px}
@@ -95,7 +98,7 @@ try {
     .updateBanner{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px;margin-bottom:12px}.updateBanner.available{border-color:var(--accent);background:#2b2118}.updateBanner form{margin:0}.updateBanner .inline{flex-wrap:wrap}
     .moderation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}.moderation form{margin:0}.moderation .block-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}
     .uploadGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;align-items:end}.uploadGrid button{min-height:37px}
-    @media(max-width:760px){.top{display:block}table,thead,tbody,tr,th,td{display:block}th{display:none}td{border-bottom:0}tr{border-bottom:1px solid var(--line);padding:8px}.moderation,.moderation .block-form{grid-template-columns:1fr}}
+    @media(max-width:760px){.top{display:block}table,thead,tbody,tr,th,td{display:block}th{display:none}td{border-bottom:0}tr{border-bottom:1px solid var(--line);padding:8px}.moderation,.moderation .block-form{grid-template-columns:1fr}}<?= tinymaker_connect_footer_css() ?>
   </style>
 </head>
 <body>
@@ -403,6 +406,7 @@ try {
     </tbody>
   </table>
   </section>
+<?= tinymaker_connect_footer() ?>
 </main>
 <script>
 (() => {

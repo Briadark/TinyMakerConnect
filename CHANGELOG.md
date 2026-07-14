@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.2 - Browser USB flash tool
+
+- Added a dedicated `/flash.php` first-time setup page for flashing TinyMakerWifi over USB from Chrome/Edge using Web Serial.
+- Added a simple default flow: connect the printer, then flash the latest official `firmware-full.bin`.
+- Added advanced local-file flashing for trusted custom `firmware-full.bin` builds, with baud-rate fallback hidden from normal users.
+- Added server-side caching for the latest TinyMakerWifi `firmware-full.bin` under `storage/firmware`.
+- Added `/api/firmware/latest-full`, which checks the latest TinyMakerWifi GitHub release and reuses the cached full firmware when already current.
+- Removed arbitrary custom firmware URL flashing to avoid server-side request risk and keep the public tool focused.
+- Added TinyMaker Connect logo/favicon/shared footer polish across public/admin pages.
+- Added public-site footer credits for TinyMakerConnect and TinyMakerWifi.
+
 ## 0.2.1 - Public site browser polish
 
 - Added public model preview switching between 0.05 mm and 0.10 mm views.
