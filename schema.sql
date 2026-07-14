@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS printers (
   firmware_version VARCHAR(32) DEFAULT NULL,
   printer_name VARCHAR(80) DEFAULT NULL,
   leaderboard_opt_in TINYINT(1) NOT NULL DEFAULT 0,
+  lifetime_print_secs BIGINT UNSIGNED NOT NULL DEFAULT 0,
   blocked TINYINT(1) NOT NULL DEFAULT 0,
   block_reason VARCHAR(255) DEFAULT NULL,
   first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 - Hosted printer Connect app
+
+- Added the server-hosted printer Connect tab script at `assets/printer-connect.js`.
+- Moved Connect tab layout, model/manager cards, leaderboard rendering, boot animation previews, sharing workflows and Connect button behavior out of the firmware dashboard.
+- Compatible printer firmware can now load Connect UI updates from the server without requiring a firmware reflash.
+- Printer profile stats now refresh through existing authenticated Connect communication instead of a separate stats endpoint.
+- Firmware version now refreshes after normal printer settings/profile syncs and model publishing, not only registration.
+- Leaderboard opt-in now includes firmware version and lifetime print time.
+
 ## 0.1.5 - Token header compatibility
 
 - Accept `X-TinyMaker-Token` from PHP server variables as well as `getallheaders()`, fixing authenticated printer calls on hosts that do not expose custom headers through `getallheaders()`.

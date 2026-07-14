@@ -160,6 +160,16 @@ function admin_printers(): array
     return $stmt->fetchAll();
 }
 
+function admin_format_duration(int $seconds): string
+{
+    $hours = intdiv($seconds, 3600);
+    $minutes = intdiv($seconds % 3600, 60);
+    if ($hours > 0) {
+        return $hours . 'h ' . $minutes . 'm';
+    }
+    return $minutes . 'm';
+}
+
 function admin_admins(): array
 {
     return db()->query('SELECT id, username, role, is_super, created_at, last_login FROM admins ORDER BY is_super DESC, username ASC')->fetchAll();
@@ -168,7 +178,7 @@ function admin_admins(): array
 function admin_leaderboard(): array
 {
     $stmt = db()->query(
-        'SELECT p.public_id, p.printer_name,
+        'SELECT p.public_id, p.printer_name, p.firmware_version, p.lifetime_print_secs,
           (SELECT COUNT(*) FROM models m WHERE m.printer_id = p.id AND m.status != "removed") AS uploads,
           (SELECT COUNT(*) FROM model_downloads d WHERE d.printer_id = p.id) AS downloads,
           (SELECT COUNT(*) FROM model_ratings r WHERE r.printer_id = p.id) AS ratings,

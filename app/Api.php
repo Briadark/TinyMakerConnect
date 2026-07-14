@@ -37,6 +37,36 @@ function create_printer_for_hardware(string $hash, string $firmware, string $nam
     return $stmt->fetch();
 }
 
+function sync_printer_profile(array $printer, array $data): void
+{
+    $firmware = clean_string((string)($data['firmware_version'] ?? $data['firmware'] ?? ''), 32);
+    $name = clean_string((string)($data['printer_name'] ?? $data['connectPrinterName'] ?? ''), 80);
+    $leaderboardRaw = $data['leaderboard_opt_in'] ?? $data['connectLeaderboard'] ?? null;
+    $hasLeaderboard = $leaderboardRaw !== null;
+    $leaderboard = (!empty($leaderboardRaw) && $leaderboardRaw !== 'false') ? 1 : 0;
+    $lifetime = max(0, (int)($data['lifetime_print_secs'] ?? $data['printSecs'] ?? 0));
+
+    $stmt = db()->prepare(
+        'UPDATE printers
+         SET firmware_version = COALESCE(NULLIF(?, ""), firmware_version),
+             printer_name = COALESCE(NULLIF(?, ""), printer_name),
+             leaderboard_opt_in = CASE WHEN ? = 1 THEN ? ELSE leaderboard_opt_in END,
+             lifetime_print_secs = CASE WHEN ? = 1 AND ? = 1 THEN ? ELSE lifetime_print_secs END,
+             last_seen = NOW()
+         WHERE id = ?'
+    );
+    $stmt->execute([
+        $firmware,
+        $name,
+        $hasLeaderboard ? 1 : 0,
+        $leaderboard,
+        $hasLeaderboard ? 1 : 0,
+        $leaderboard,
+        $lifetime,
+        $printer['id'],
+    ]);
+}
+
 function api_register_printer(): void
 {
     $hardware = clean_string((string)($_POST['hardware_id'] ?? ''), 128);
@@ -134,7 +164,16 @@ function api_store_printer_backup(): void
         error_response('invalid backup', 400);
     }
     $decoded = json_decode($raw, true);
-    if (!is_array($decoded) || (int)($decoded['backupVersion'] ?? 0) < 1) {
+    if (!is_array($decoded)) {
+        error_response('not a TinyMaker backup', 400);
+    }
+    sync_printer_profile($printer, $decoded);
+
+    if (!empty($decoded['profileOnly'])) {
+        json_response(['ok' => true]);
+    }
+
+    if ((int)($decoded['backupVersion'] ?? 0) < 1) {
         error_response('not a TinyMaker backup', 400);
     }
 
@@ -197,7 +236,7 @@ function api_list_bookmarks(): void
 function api_leaderboard(): void
 {
     $stmt = db()->query(
-        'SELECT p.public_id, p.printer_name,
+        'SELECT p.public_id, p.printer_name, p.firmware_version, p.lifetime_print_secs,
           (SELECT COUNT(*) FROM models m WHERE m.printer_id = p.id AND m.status != "removed") AS uploads,
           (SELECT COUNT(*) FROM model_downloads d WHERE d.printer_id = p.id) AS downloads,
           (SELECT COUNT(*) FROM model_ratings r WHERE r.printer_id = p.id) AS ratings,
@@ -258,6 +297,7 @@ function api_publish_model(): void
 {
     ensure_storage();
     $printer = require_printer();
+    sync_printer_profile($printer, $_POST);
     $limits = config()['limits'];
 
     $name = clean_string((string)($_POST['model_name'] ?? ''), 120);

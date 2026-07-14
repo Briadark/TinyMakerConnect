@@ -1,6 +1,12 @@
 Options -Indexes
 RewriteEngine On
 
+<IfModule mod_headers.c>
+  <Files "printer-connect.js">
+    Header set Cache-Control "no-cache"
+  </Files>
+</IfModule>
+
 RewriteRule ^(app|storage)(/.*)?$ - [F,L]
 RewriteRule ^(README\.md|schema\.sql|app_loader\.php)$ - [F,L]
 

@@ -289,12 +289,16 @@ try {
   <section class="tabPanel" data-admin-panel="printers">
   <h2>Printers</h2>
   <table>
-    <thead><tr><th>Printer</th><th>Firmware</th><th>Models</th><th>Seen</th><th>Moderation</th></tr></thead>
+    <thead><tr><th>Printer</th><th>Firmware</th><th>Stats</th><th>Models</th><th>Seen</th><th>Moderation</th></tr></thead>
     <tbody>
     <?php foreach ($printers as $printer): ?>
       <tr>
         <td><?= h($printer['printer_name'] ?: $printer['public_id']) ?><br><span class="muted"><?= h($printer['public_id']) ?></span></td>
         <td><?= h($printer['firmware_version'] ?: '-') ?></td>
+        <td>
+          <span class="pill"><?= admin_format_duration((int)($printer['lifetime_print_secs'] ?? 0)) ?> lifetime</span><br>
+          <span class="pill"><?= (int)$printer['leaderboard_opt_in'] === 1 ? 'Leaderboard on' : 'Leaderboard off' ?></span>
+        </td>
         <td>
           <?= (int)$printer['model_count'] ?><br>
           <span class="muted"><?= (int)$printer['published_model_count'] ?> published</span><br>
@@ -382,11 +386,13 @@ try {
   <section class="tabPanel" data-admin-panel="leaderboard">
   <h2>Leaderboard</h2>
   <table>
-    <thead><tr><th>Printer</th><th>Uploads</th><th>Downloads</th><th>Ratings</th><th>Bookmarks</th><th>Layers uploaded</th></tr></thead>
+    <thead><tr><th>Printer</th><th>Firmware</th><th>Lifetime print time</th><th>Uploads</th><th>Downloads</th><th>Ratings</th><th>Bookmarks</th><th>Layers uploaded</th></tr></thead>
     <tbody>
     <?php foreach ($leaderboard as $row): ?>
       <tr>
         <td><?= h($row['printer_name'] ?: $row['public_id']) ?><br><span class="muted"><?= h($row['public_id']) ?></span></td>
+        <td><?= h($row['firmware_version'] ?: '-') ?></td>
+        <td><?= h(admin_format_duration((int)($row['lifetime_print_secs'] ?? 0))) ?></td>
         <td><?= (int)$row['uploads'] ?></td>
         <td><?= (int)$row['downloads'] ?></td>
         <td><?= (int)$row['ratings'] ?></td>

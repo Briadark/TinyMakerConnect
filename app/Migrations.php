@@ -203,6 +203,10 @@ function migrate_database(PDO $pdo): void
             }
         }
     });
+
+    apply_migration($pdo, '011_printer_leaderboard_stats', function (PDO $pdo): void {
+        add_column_if_missing($pdo, 'printers', 'lifetime_print_secs', 'ALTER TABLE printers ADD COLUMN lifetime_print_secs BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER leaderboard_opt_in');
+    });
 }
 
 function apply_migration(PDO $pdo, string $migration, callable $callback): void

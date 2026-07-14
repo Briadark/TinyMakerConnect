@@ -119,7 +119,7 @@ The admin dashboard is split into tabs for Overview, Models, Boot animations, Pr
 - hide all public models from a printer
 - add and delete regular admins
 - first admin is the super admin and cannot be deleted
-- printer leaderboard by uploads, downloads, ratings, bookmarks and uploaded layers
+- printer leaderboard by uploads, downloads, ratings, bookmarks, uploaded layers, firmware version and lifetime print time
 
 ## First API Flow
 
@@ -133,8 +133,19 @@ curl -X POST https://your-connect-domain.example/api/printers/register \
   -F leaderboard_opt_in=0
 ```
 
-Set `leaderboard_opt_in=1` only when the user explicitly chooses to share printer stats on the public leaderboard. Registration, publishing, ratings and bookmarks work without leaderboard sharing.
+Set `leaderboard_opt_in=1` only when the user explicitly chooses to share printer stats on the public leaderboard. This includes firmware version and lifetime print time. Registration, publishing, ratings and bookmarks work without leaderboard sharing.
 If a printer was connected before and does not send its saved token, registration returns `409` with `reclaim_required=true`.
+
+Refresh printer profile after settings changes or prints without storing a full backup:
+
+```bash
+curl -X POST https://your-connect-domain.example/api/printers/me/backup \
+  -H "X-TinyMaker-Token: PUBLISH_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"profileOnly":true,"firmware":"0.10.0","connectPrinterName":"Workshop TinyMaker","connectLeaderboard":true,"printSecs":12345}'
+```
+
+The same endpoint stores a full settings backup when the JSON contains `backupVersion`.
 
 Check whether a printer is already known:
 
