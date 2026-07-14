@@ -94,7 +94,8 @@ Stock firmware will not know how to use these endpoints.
 
 ```txt
 /                         Public model list
-/model/{public_id}         Model detail page
+/model/{public_id}              Model detail page
+/boot-animation/{public_id}     Boot animation detail page
 /install.php               First-run installer
 /admin.php                 Admin dashboard
 /health.php                Deployment health check

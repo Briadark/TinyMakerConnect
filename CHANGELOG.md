@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 - Public site browser polish
+
+- Added public model preview switching between 0.05 mm and 0.10 mm views.
+- Added public model search.
+- Added a public boot animations section with browser-rendered TMB previews.
+- Added public leaderboard category sorting for uploads, downloads, ratings, bookmarks, print time and uploaded layers.
+- Added dark/light theme switching on the public site.
+- Fixed long SHA256 values wrapping in public detail views.
+
 ## 0.2.0 - Hosted printer Connect app
 
 - Added the server-hosted printer Connect tab script at `assets/printer-connect.js`.
