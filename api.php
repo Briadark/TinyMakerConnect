@@ -51,6 +51,10 @@ try {
         api_leaderboard();
     }
 
+    if ($parts === ['api', 'firmware', 'latest-full'] && $method === 'GET') {
+        api_download_latest_full_firmware();
+    }
+
     if ($parts === ['api', 'models'] && $method === 'GET') {
         api_list_models(false);
     }

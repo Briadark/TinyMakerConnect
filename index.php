@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app_loader.php';
 tinymaker_connect_require_app('bootstrap.php');
+tinymaker_connect_require_app('Footer.php');
 
 web_require_installed();
 if (admin_count() < 1) {
@@ -95,10 +96,11 @@ if (count($parts) === 2 && $parts[0] === 'model') {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TinyMaker Connect</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     :root{color-scheme:dark;--bg:#111214;--panel:#1b1d20;--panel2:#24262b;--text:#f2f2f2;--muted:#a5a7ad;--line:#343740;--accent:#e8720c;--accentText:#fff;--soft:#2f2419;--input:#141518;--shadow:0 14px 40px rgba(0,0,0,.28)}
     :root[data-theme="light"]{color-scheme:light;--bg:#f6f7f9;--panel:#fff;--panel2:#e6e9ee;--text:#202329;--muted:#68707d;--line:#d6dae2;--accent:#e8720c;--accentText:#fff;--soft:#fff0df;--input:#fff;--shadow:0 14px 34px rgba(30,35,45,.12)}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:16px;line-height:1.45}a{color:inherit}main{width:min(1180px,100%);margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:20px}.brand{display:flex;gap:12px;align-items:center}.logo{width:38px;height:38px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:white;font-weight:900}.eyebrow{color:var(--accent);font-weight:800;text-transform:uppercase;font-size:12px;letter-spacing:.08em}h1{font-size:32px;margin:0}h2{font-size:22px;margin:0 0 12px}h3{font-size:18px;margin:0 0 8px}.muted{color:var(--muted)}.section{margin-top:24px}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.tab,.button,button{border:0;border-radius:8px;padding:11px 14px;background:var(--panel2);color:var(--text);font:inherit;font-weight:800;cursor:pointer;text-decoration:none}.tab.active,.button.primary,button.primary{background:var(--accent);color:var(--accentText)}.button.secondary,button.secondary{border:1px solid var(--line)}input[type="search"]{width:min(420px,100%);border:1px solid var(--line);border-radius:8px;background:var(--input);color:var(--text);padding:12px 14px;font:inherit}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;text-decoration:none;box-shadow:var(--shadow)}.card:hover{border-color:var(--accent)}.preview{aspect-ratio:4/3;background:#090a0b;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:12px}.preview img{width:100%;height:100%;object-fit:contain}.bootPreview{aspect-ratio:2/1;background:#050506;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:12px}.bootPreview canvas{width:100%;height:100%;image-rendering:pixelated}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stat{border-top:1px solid var(--line);padding-top:8px}.social,.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.pill{border:1px solid var(--line);border-radius:999px;padding:3px 8px;color:var(--muted);font-size:12px}.label{font-size:12px;color:var(--muted)}.value{font-size:16px;font-weight:750}.detail{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px}.side{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:var(--shadow)}.hash{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;overflow-wrap:anywhere;word-break:break-word;line-height:1.5}.leaderRows{display:grid;gap:8px}.leaderRow{display:grid;grid-template-columns:44px minmax(0,1fr) repeat(4,auto);gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}.empty{border:1px dashed var(--line);border-radius:8px;padding:18px;color:var(--muted);background:var(--panel)}.hidden{display:none!important}.notice{background:var(--soft);border:1px solid var(--accent);border-radius:8px;padding:12px 14px;margin:12px 0 18px}.siteNav{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.siteNav a{text-decoration:none}.sectionHead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}.sectionHead p{margin:0}@media(max-width:820px){main{padding:16px}.top,.detail,.sectionHead{display:block}.toolbar{margin-top:12px}.side{margin-top:16px}.leaderRow{grid-template-columns:36px minmax(0,1fr)}.leaderRow .pill{width:max-content}.stats{grid-template-columns:repeat(2,1fr)}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:16px;line-height:1.45}a{color:inherit}main{width:min(1180px,100%);margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:20px}.brand{display:flex;gap:12px;align-items:center}.eyebrow{color:var(--accent);font-weight:800;text-transform:uppercase;font-size:12px;letter-spacing:.08em}h1{font-size:32px;margin:0}h2{font-size:22px;margin:0 0 12px}h3{font-size:18px;margin:0 0 8px}.muted{color:var(--muted)}.section{margin-top:24px}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.tab,.button,button{border:0;border-radius:8px;padding:11px 14px;background:var(--panel2);color:var(--text);font:inherit;font-weight:800;cursor:pointer;text-decoration:none}.tab.active,.button.primary,button.primary{background:var(--accent);color:var(--accentText)}.button.secondary,button.secondary{border:1px solid var(--line)}input[type="search"]{width:min(420px,100%);border:1px solid var(--line);border-radius:8px;background:var(--input);color:var(--text);padding:12px 14px;font:inherit}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;text-decoration:none;box-shadow:var(--shadow)}.card:hover{border-color:var(--accent)}.preview{aspect-ratio:4/3;background:#090a0b;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:12px}.preview img{width:100%;height:100%;object-fit:contain}.bootPreview{aspect-ratio:2/1;background:#050506;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:12px}.bootPreview canvas{width:100%;height:100%;image-rendering:pixelated}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stat{border-top:1px solid var(--line);padding-top:8px}.social,.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.pill{border:1px solid var(--line);border-radius:999px;padding:3px 8px;color:var(--muted);font-size:12px}.label{font-size:12px;color:var(--muted)}.value{font-size:16px;font-weight:750}.detail{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px}.side{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:var(--shadow)}.hash{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;overflow-wrap:anywhere;word-break:break-word;line-height:1.5}.leaderRows{display:grid;gap:8px}.leaderRow{display:grid;grid-template-columns:44px minmax(0,1fr) repeat(4,auto);gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}.empty{border:1px dashed var(--line);border-radius:8px;padding:18px;color:var(--muted);background:var(--panel)}.hidden{display:none!important}.notice{background:var(--soft);border:1px solid var(--accent);border-radius:8px;padding:12px 14px;margin:12px 0 18px}.siteNav{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.siteNav .tab{flex:1;min-width:170px;margin-top:0}.logo{width:52px;height:52px;border-radius:0;background:transparent;display:block;flex:0 0 52px}.logo svg{display:block;width:52px;height:52px}<?= tinymaker_connect_footer_css() ?>.sectionHead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}.sectionHead p{margin:0}@media(max-width:820px){main{padding:16px}.top,.detail,.sectionHead{display:block}.toolbar{margin-top:12px}.side{margin-top:16px}.leaderRow{grid-template-columns:36px minmax(0,1fr)}.leaderRow .pill{width:max-content}.stats{grid-template-columns:repeat(2,1fr)}}
   </style>
   <script>
     (function(){
@@ -180,23 +182,34 @@ if (count($parts) === 2 && $parts[0] === 'model') {
 <?php elseif ($isHome): ?>
   <div class="top">
     <div class="brand">
-      <div class="logo">T</div>
+            <div class="logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+        <path d="M18 15 Q32 3 46 15" fill="none" stroke="#4da3ff" stroke-width="4" stroke-linecap="round"/>
+        <path d="M23 19 Q32 11 41 19" fill="none" stroke="#4da3ff" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M28 23 Q32 19 36 23" fill="none" stroke="#4da3ff" stroke-width="3" stroke-linecap="round"/>
+        <rect x="20" y="26" width="24" height="8" rx="3" fill="#e8720c" opacity=".5"/>
+        <rect x="14" y="38" width="36" height="8" rx="3" fill="#e8720c" opacity=".75"/>
+        <rect x="8" y="50" width="48" height="8" rx="3" fill="#e8720c"/>
+        <path d="M41 53c0-2.6 2-4.8 4.6-5 .8-2.5 3.1-4.2 5.9-4.2 3.5 0 6.4 2.6 6.8 6 2.2.2 3.9 2 3.9 4.2 0 2.5-2 4.5-4.7 4.5H46c-2.8 0-5-2.4-5-5.5Z" fill="#fff" stroke="#4da3ff" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg></div>
       <div>
         <div class="eyebrow">TinyMaker Connect</div>
         <h1>Ready-to-print models and boot animations</h1>
         <div class="muted">Browse shared TinyMaker content for compatible TinyMakerWifi firmware builds.</div>
       </div>
     </div>
-    <button id="themeToggle" type="button" class="secondary">Theme</button>
+    <div class="toolbar">
+      <a class="button secondary" href="/flash.php">First-time USB flash</a>
+      <button id="themeToggle" type="button" class="secondary">Theme</button>
+    </div>
   </div>
   <div class="notice">The hosted service is built for printers running TinyMakerWifi firmware with Connect support. Stock printers cannot use these downloads directly from the dashboard.</div>
-  <nav class="siteNav">
-    <a class="tab active" href="#models">Models</a>
-    <a class="tab" href="#boot-animations">Boot animations</a>
-    <a class="tab" href="#leaderboard">Leaderboards</a>
+  <nav class="siteNav" aria-label="Connect sections">
+    <button class="tab active" type="button" data-site-tab="models">Models</button>
+    <button class="tab" type="button" data-site-tab="boot-animations">Boot animations</button>
+    <button class="tab" type="button" data-site-tab="leaderboard">Leaderboards</button>
   </nav>
 
-  <section id="models" class="section">
+  <section id="models" class="section" data-site-panel="models">
     <div class="sectionHead">
       <div>
         <h2>Models</h2>
@@ -236,7 +249,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
     <div id="modelEmpty" class="empty hidden">No models match your search.</div>
   </section>
 
-  <section id="boot-animations" class="section">
+  <section id="boot-animations" class="section hidden" data-site-panel="boot-animations">
     <div class="sectionHead">
       <div>
         <h2>Boot animations</h2>
@@ -264,7 +277,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
     <?php endif; ?>
   </section>
 
-  <section id="leaderboard" class="section">
+  <section id="leaderboard" class="section hidden" data-site-panel="leaderboard">
     <div class="sectionHead">
       <div>
         <h2>Leaderboards</h2>
@@ -300,7 +313,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
   <h1>Not found</h1>
   <p><a href="/">Back to Connect</a></p>
 <?php endif; ?>
-</main>
+<?= tinymaker_connect_footer() ?></main>
 <script>
 (function(){
   const $ = s => document.querySelector(s);
@@ -334,6 +347,14 @@ if (count($parts) === 2 && $parts[0] === 'model') {
   $$('[data-preview-mode]').forEach(b => b.addEventListener('click', () => updatePreviewMode(b.dataset.previewMode)));
   updatePreviewMode(previewMode);
 
+  const setSiteTab = tab => {
+    tab = ['models','boot-animations','leaderboard'].includes(tab) ? tab : 'models';
+    localStorage.setItem('tmcSiteTab', tab);
+    $$('[data-site-tab]').forEach(b => b.classList.toggle('active', b.dataset.siteTab === tab));
+    $$('[data-site-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.sitePanel !== tab));
+  };
+  $$('[data-site-tab]').forEach(b => b.addEventListener('click', () => setSiteTab(b.dataset.siteTab)));
+  setSiteTab(localStorage.getItem('tmcSiteTab') || 'models');
   const search = $('#modelSearch');
   if (search) {
     const apply = () => {

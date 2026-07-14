@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/Migrations.php';
 
-const TINYMAKER_CONNECT_VERSION = '0.2.1';
+const TINYMAKER_CONNECT_VERSION = '0.2.2';
 
 function cors_headers(): void
 {
@@ -25,6 +25,7 @@ function config(): array
     }
     $config = require $path;
     $config['storage']['boot_animations'] ??= dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'boot_animations';
+    $config['storage']['firmware'] ??= dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'firmware';
     $config['limits']['max_boot_animation_bytes'] ??= 8 * 1024 * 1024;
     $config['updates']['github_repo'] ??= 'Briadark/TinyMakerConnect';
     return $config;

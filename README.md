@@ -19,6 +19,7 @@ This is not for stock printers. A printer needs firmware with TinyMaker Connect 
 - Upload, replace, moderate and serve boot animations.
 - Moderate models, printers, admins and leaderboard data from the admin dashboard.
 - Update the Connect server from GitHub releases through the admin dashboard.
+- Flash TinyMakerWifi for first-time USB setup from a supported browser.
 
 ## Requirements
 
@@ -28,6 +29,7 @@ This is not for stock printers. A printer needs firmware with TinyMaker Connect 
   - PDO MySQL
   - fileinfo
   - openssl
+  - curl recommended for firmware caching; PHP HTTPS streams are used as a fallback
 
 ## Optional Self-Hosting
 
@@ -68,6 +70,7 @@ Suggested server layout:
     models/
     previews/
     boot_animations/
+    firmware/
     tmp/
 ```
 
@@ -87,6 +90,7 @@ The firmware is expected to:
 - publish models through `/api/models`
 - import model and boot-animation downloads through the printer dashboard
 - optionally store and restore settings through `/api/printers/me/backup`
+- optionally direct first-time installers to `/flash.php` for browser-based USB flashing
 
 Stock firmware will not know how to use these endpoints.
 
@@ -96,6 +100,7 @@ Stock firmware will not know how to use these endpoints.
 /                         Public model list
 /model/{public_id}              Model detail page
 /boot-animation/{public_id}     Boot animation detail page
+/flash.php                 First-time USB firmware flasher
 /install.php               First-run installer
 /admin.php                 Admin dashboard
 /health.php                Deployment health check
@@ -103,7 +108,29 @@ Stock firmware will not know how to use these endpoints.
 /api/boot-animations       API list boot animations
 /api/printers/register     Register printer
 /api/leaderboard           Public leaderboard data
+/api/firmware/latest-full  Cached latest TinyMakerWifi full firmware
 ```
+
+## First-Time USB Flash Tool
+
+`/flash.php` provides a browser-based first install and recovery tool for TinyMakerWifi firmware.
+
+The tool uses the browser Web Serial API and is intended for desktop Chrome or Edge over HTTPS. It flashes the full first-install image at address `0x0`; after TinyMakerWifi is installed, normal firmware updates should be done from the printer dashboard over WiFi.
+
+The default path is intentionally simple:
+
+1. Connect the printer over USB.
+2. Open `/flash.php`.
+3. Press **Connect printer** and select the USB serial port.
+4. Press **Flash latest**.
+
+If multiple serial ports are shown, unplug the printer, open the port picker again, plug the printer back in and select the port that appears.
+
+The page downloads the latest official TinyMakerWifi `firmware-full.bin` through `/api/firmware/latest-full`. The server checks the latest TinyMakerWifi GitHub release, stores a cached copy in `storage/firmware/`, and only downloads a new copy when the latest release tag changes. If GitHub is temporarily unavailable but a cached firmware exists, the cached copy is served.
+
+Advanced controls are limited to a lower baud-rate fallback and local `firmware-full.bin` upload for trusted custom builds. Arbitrary custom URL flashing is intentionally not supported.
+
+USB flashing is powered by [Espressif esptool-js](https://github.com/espressif/esptool-js).
 
 ## Admin Dashboard
 

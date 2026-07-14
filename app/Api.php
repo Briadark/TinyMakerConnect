@@ -204,6 +204,118 @@ function api_get_printer_backup(): void
     ]);
 }
 
+function api_download_latest_full_firmware(): void
+{
+    ensure_storage();
+    $cacheDir = config()['storage']['firmware'];
+    $binPath = $cacheDir . DIRECTORY_SEPARATOR . 'firmware-full.bin';
+    $metaPath = $cacheDir . DIRECTORY_SEPARATOR . 'firmware-full.json';
+    $meta = is_file($metaPath) ? json_decode((string)file_get_contents($metaPath), true) : [];
+
+    $release = tinymaker_firmware_http_get(
+        'https://api.github.com/repos/slibbinas/TinyMakerWifi/releases/latest',
+        'application/vnd.github+json'
+    );
+    if (!$release && is_file($binPath)) {
+        api_stream_cached_full_firmware($binPath, is_array($meta) ? (string)($meta['tag'] ?? '') : '');
+    }
+
+    $decoded = json_decode((string)$release, true);
+    if (!is_array($decoded)) {
+        error_response('firmware version check failed', 502);
+    }
+
+    $tag = clean_string((string)($decoded['tag_name'] ?? ''), 48);
+    $assetUrl = '';
+    foreach (($decoded['assets'] ?? []) as $asset) {
+        if (($asset['name'] ?? '') === 'firmware-full.bin') {
+            $assetUrl = (string)($asset['browser_download_url'] ?? '');
+            break;
+        }
+    }
+    if ($tag === '' || $assetUrl === '') {
+        error_response('firmware-full.bin not found in latest release', 502);
+    }
+
+    if (is_file($binPath) && is_array($meta) && (string)($meta['tag'] ?? '') === $tag) {
+        api_stream_cached_full_firmware($binPath, $tag);
+    }
+
+    $body = tinymaker_firmware_http_get($assetUrl, 'application/octet-stream');
+    if (!is_string($body) || strlen($body) < 1024) {
+        if (is_file($binPath)) {
+            api_stream_cached_full_firmware($binPath, is_array($meta) ? (string)($meta['tag'] ?? '') : '');
+        }
+        error_response('firmware download failed', 502);
+    }
+
+    $tmpPath = $binPath . '.tmp';
+    if (file_put_contents($tmpPath, $body, LOCK_EX) === false || !rename($tmpPath, $binPath)) {
+        @unlink($tmpPath);
+        error_response('firmware cache write failed', 500);
+    }
+    file_put_contents($metaPath, json_encode([
+        'tag' => $tag,
+        'source_url' => $assetUrl,
+        'bytes' => strlen($body),
+        'updated_at' => gmdate('c'),
+    ], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), LOCK_EX);
+
+    api_stream_cached_full_firmware($binPath, $tag);
+}
+
+function tinymaker_firmware_http_get(string $url, string $accept): string|false
+{
+    $headers = [
+        'User-Agent: TinyMakerConnect firmware proxy',
+        'Accept: ' . $accept,
+    ];
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 90,
+            CURLOPT_HTTPHEADER => $headers,
+        ]);
+        $body = curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        return ($status >= 200 && $status < 300 && is_string($body)) ? $body : false;
+    } else {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'header' => implode("\r\n", $headers),
+                'timeout' => 90,
+                'follow_location' => 1,
+                'max_redirects' => 5,
+            ],
+        ]);
+        return @file_get_contents($url, false, $context);
+    }
+}
+
+function api_stream_cached_full_firmware(string $path, string $tag): void
+{
+    if (!is_file($path) || filesize($path) < 1024) {
+        error_response('firmware cache missing', 502);
+    }
+
+    cors_headers();
+    header('Content-Type: application/octet-stream');
+    header('Content-Length: ' . filesize($path));
+    header('Content-Disposition: attachment; filename="firmware-full.bin"');
+    if ($tag !== '') {
+        header('X-TinyMaker-Firmware-Version: ' . $tag);
+    }
+    header('Cache-Control: no-store');
+    readfile($path);
+    exit;
+}
+
 function api_list_models(bool $mine = false): void
 {
     if ($mine) {
