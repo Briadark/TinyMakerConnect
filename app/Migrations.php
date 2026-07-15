@@ -207,6 +207,19 @@ function migrate_database(PDO $pdo): void
     apply_migration($pdo, '011_printer_leaderboard_stats', function (PDO $pdo): void {
         add_column_if_missing($pdo, 'printers', 'lifetime_print_secs', 'ALTER TABLE printers ADD COLUMN lifetime_print_secs BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER leaderboard_opt_in');
     });
+
+    apply_migration($pdo, '012_auth_throttle', function (PDO $pdo): void {
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS auth_throttle (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              scope VARCHAR(32) NOT NULL,
+              identity CHAR(64) NOT NULL,
+              failed_attempts INT NOT NULL DEFAULT 0,
+              last_failed_at BIGINT NOT NULL DEFAULT 0,
+              UNIQUE KEY idx_auth_throttle_scope_identity (scope, identity)
+            )'
+        );
+    });
 }
 
 function apply_migration(PDO $pdo, string $migration, callable $callback): void

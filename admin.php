@@ -12,18 +12,33 @@ if (!config_is_installed() || admin_count() < 1) {
 $error = null;
 $notice = null;
 
-if (isset($_GET['logout'])) {
-    admin_logout();
+if (request_method() === 'POST' && ($_POST['action'] ?? '') === 'logout') {
+    try {
+        verify_csrf();
+        admin_logout();
+    } catch (Throwable $e) {
+        // Stale or missing session token; treat as already logged out.
+    }
     redirect_to('/admin.php');
 }
 
 if (request_method() === 'POST' && ($_POST['action'] ?? '') === 'login') {
-    $username = clean_string((string)($_POST['username'] ?? ''), 80);
-    $password = (string)($_POST['password'] ?? '');
-    if (admin_login($username, $password)) {
-        redirect_to('/admin.php');
+    try {
+        verify_csrf();
+    } catch (Throwable $e) {
+        $error = 'Your session expired. Please try logging in again.';
     }
-    $error = 'Invalid username or password.';
+    if ($error === null && admin_login_blocked()) {
+        $error = 'Too many failed login attempts. Wait a few minutes and try again.';
+    }
+    if ($error === null) {
+        $username = clean_string((string)($_POST['username'] ?? ''), 80);
+        $password = (string)($_POST['password'] ?? '');
+        if (admin_login($username, $password)) {
+            redirect_to('/admin.php');
+        }
+        $error = 'Invalid username or password.';
+    }
 }
 
 $admin = current_admin();
@@ -55,6 +70,7 @@ if (!$admin):
 <?php if ($error): ?><div class="err"><?= h($error) ?></div><?php endif; ?>
 <form method="post">
   <input type="hidden" name="action" value="login">
+  <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>">
   <label>Username</label><input name="username" required autofocus>
   <label>Password</label><input name="password" type="password" required>
   <button type="submit">Login</button>
@@ -108,7 +124,7 @@ try {
       <h1>TinyMaker Connect Admin</h1>
       <div class="muted">Logged in as <?= h($admin['username']) ?></div>
     </div>
-    <div class="inline"><a class="button secondary" href="/">Public site</a><a class="button danger" href="/admin.php?logout=1">Logout</a></div>
+    <div class="inline"><a class="button secondary" href="/">Public site</a><form method="post" style="margin:0"><input type="hidden" name="action" value="logout"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><button type="submit" class="danger">Logout</button></form></div>
   </div>
 
   <?php if ($notice): ?><div class="msg ok"><?= h($notice) ?></div><?php endif; ?>
