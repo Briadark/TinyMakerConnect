@@ -87,6 +87,22 @@ try {
         api_rate_model($parts[2]);
     }
 
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'models' && $parts[3] === 'like' && $method === 'POST') {
+        api_like_model($parts[2], true);
+    }
+
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'models' && $parts[3] === 'like' && $method === 'DELETE') {
+        api_like_model($parts[2], false);
+    }
+
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'boot-animations' && $parts[3] === 'like' && $method === 'POST') {
+        api_like_boot_animation($parts[2], true);
+    }
+
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'boot-animations' && $parts[3] === 'like' && $method === 'DELETE') {
+        api_like_boot_animation($parts[2], false);
+    }
+
     if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'models' && $parts[3] === 'bookmark' && $method === 'POST') {
         api_bookmark_model($parts[2], true);
     }

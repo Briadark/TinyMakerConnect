@@ -175,7 +175,7 @@ try {
     <div class="stat"><div class="label">Printers</div><div class="value"><?= (int)$stats['printers'] ?></div></div>
     <div class="stat"><div class="label">Blocked</div><div class="value"><?= (int)$stats['blocked'] ?></div></div>
     <div class="stat"><div class="label">Downloads</div><div class="value"><?= (int)$stats['downloads'] ?></div></div>
-    <div class="stat"><div class="label">Ratings</div><div class="value"><?= (int)$stats['ratings'] ?></div></div>
+    <div class="stat"><div class="label">Likes</div><div class="value"><?= (int)$stats['likes'] ?></div></div>
     <div class="stat"><div class="label">Bookmarks</div><div class="value"><?= (int)$stats['bookmarks'] ?></div></div>
   </section>
   </section>
@@ -205,7 +205,7 @@ try {
           <span class="pill"><?= $model['resin_ml'] === null ? '-' : h((string)$model['resin_ml']) . ' ml' ?></span><br>
           <span class="pill"><?= h($model['license'] ?? 'CC-BY-NC') ?></span><br>
           <span class="pill"><?= (int)$model['download_count'] ?> downloads</span><br>
-          <span class="pill"><?= (int)$model['rating_count'] ?> ratings</span><br>
+          <span class="pill"><?= (int)($model['like_count'] ?? 0) ?> likes</span><br>
           <span class="pill"><?= (int)$model['bookmark_count'] ?> bookmarks</span>
         </td>
         <td>
@@ -405,7 +405,7 @@ try {
   <section class="tabPanel" data-admin-panel="leaderboard">
   <h2>Leaderboard</h2>
   <table>
-    <thead><tr><th>Printer</th><th>Firmware</th><th>Lifetime print time</th><th>Uploads</th><th>Downloads</th><th>Ratings</th><th>Bookmarks</th><th>Layers uploaded</th></tr></thead>
+    <thead><tr><th>Printer</th><th>Firmware</th><th>Lifetime print time</th><th>Uploads</th><th>Downloads</th><th>Likes</th><th>Bookmarks</th><th>Layers uploaded</th></tr></thead>
     <tbody>
     <?php foreach ($leaderboard as $row): ?>
       <tr>
@@ -414,7 +414,7 @@ try {
         <td><?= h(admin_format_duration((int)($row['lifetime_print_secs'] ?? 0))) ?></td>
         <td><?= (int)$row['uploads'] ?></td>
         <td><?= (int)$row['downloads'] ?></td>
-        <td><?= (int)$row['ratings'] ?></td>
+        <td><?= (int)$row['likes'] ?></td>
         <td><?= (int)$row['bookmarks'] ?></td>
         <td><?= (int)$row['uploaded_layers'] ?></td>
       </tr>

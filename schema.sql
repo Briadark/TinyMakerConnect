@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS models (
   rating_count INT NOT NULL DEFAULT 0,
   rating_sum INT NOT NULL DEFAULT 0,
   bookmark_count INT NOT NULL DEFAULT 0,
+  like_count INT NOT NULL DEFAULT 0,
   checksum_sha256 CHAR(64) NOT NULL,
   preview_05_path VARCHAR(255) DEFAULT NULL,
   preview_1_path VARCHAR(255) DEFAULT NULL,
@@ -54,6 +55,7 @@ CREATE TABLE IF NOT EXISTS boot_animations (
   license VARCHAR(32) NOT NULL DEFAULT 'CC-BY-NC',
   file_size BIGINT NOT NULL,
   download_count INT NOT NULL DEFAULT 0,
+  like_count INT NOT NULL DEFAULT 0,
   checksum_sha256 CHAR(64) NOT NULL,
   download_path VARCHAR(255) NOT NULL,
   status ENUM('pending','published','hidden','removed') NOT NULL DEFAULT 'published',
@@ -116,6 +118,26 @@ CREATE TABLE IF NOT EXISTS model_bookmarks (
   UNIQUE KEY idx_bookmarks_model_printer_unique (model_id, printer_id),
   CONSTRAINT fk_bookmarks_model FOREIGN KEY (model_id) REFERENCES models(id),
   CONSTRAINT fk_bookmarks_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+);
+
+CREATE TABLE IF NOT EXISTS model_likes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  model_id INT NOT NULL,
+  printer_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY idx_model_likes_model_printer_unique (model_id, printer_id),
+  CONSTRAINT fk_model_likes_model FOREIGN KEY (model_id) REFERENCES models(id),
+  CONSTRAINT fk_model_likes_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+);
+
+CREATE TABLE IF NOT EXISTS boot_animation_likes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  animation_id INT NOT NULL,
+  printer_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY idx_boot_animation_likes_animation_printer_unique (animation_id, printer_id),
+  CONSTRAINT fk_boot_animation_likes_animation FOREIGN KEY (animation_id) REFERENCES boot_animations(id),
+  CONSTRAINT fk_boot_animation_likes_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
 );
 
 CREATE TABLE IF NOT EXISTS admins (

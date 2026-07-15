@@ -40,6 +40,13 @@
     if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status));
     return j;
   };
+  const connectSendJson = async (path, method) => {
+    const r = await fetch(connectApiUrl(path), { method: method || 'POST', cache: 'no-store', headers: connectAuthHeaders() });
+    let j = {};
+    try { j = await r.json(); } catch (e) {}
+    if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  };
   const connectPostForm = (path, fd, progressCb) => new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', connectApiUrl(path));
@@ -280,6 +287,28 @@
   window.connectActivateBootAnim = connectActivateBootAnim;
   window.connectModelAction = connectModelAction;
   window.connectImportModel = connectImportModel;
+  window.connectLikeModel = async (id, liked) => {
+    id = decodeMaybe(id);
+    try {
+      const res = await connectSendJson('/api/models/' + enc(id) + '/like', liked === '1' ? 'DELETE' : 'POST');
+      const model = res.model || {};
+      connectModelItems = connectModelItems.map(m => m.public_id === id ? model : m);
+      renderConnectModelList();
+      loadConnectModels(false);
+      msg((model.liked ? 'Liked ' : 'Removed like from ') + (model.model_name || 'model') + '.');
+    } catch (e) { msg(e.message, true); }
+  };
+  window.connectLikeBootAnim = async (id, liked) => {
+    id = decodeMaybe(id);
+    try {
+      const res = await connectSendJson('/api/boot-animations/' + enc(id) + '/like', liked === '1' ? 'DELETE' : 'POST');
+      const animation = res.animation || {};
+      connectBootAnimItems = connectBootAnimItems.map(a => a.public_id === id ? animation : a);
+      renderConnectBootAnimLibrary();
+      loadConnectBootAnimations();
+      msg((animation.liked ? 'Liked ' : 'Removed like from ') + (animation.animation_name || 'boot animation') + '.');
+    } catch (e) { msg(e.message, true); }
+  };
   window.TinyMakerConnectShareModel = name => shareModel(decodeMaybe(name));
 
   const connectModelHtml = (m, mine) => {
@@ -287,7 +316,7 @@
     const previewPath = (connectPreviewMode === '1' ? m.preview_1_url : m.preview_05_url) || (m.preview_05_url || m.preview_1_url || '');
     const preview = previewPath ? connectBase() + previewPath : '';
     const resin = (m.resin_ml === null || m.resin_ml === undefined) ? '-' : Number(m.resin_ml).toFixed(2) + ' ml';
-    const rating = m.rating_count > 0 ? (Number(m.rating_average || 0).toFixed(1) + '/5') : 'No ratings';
+    const likeCount = Number(m.like_count || 0);
     const localName = connectLocalModels[m.public_id || ''] || '';
     const actionDisabled = (statusData && statusData.busy) || (statusData && statusData.webControl === false);
     let h = '<div class="connectTile">';
@@ -301,13 +330,14 @@
     h += '<div class="connectStat"><div class="label">Resin</div><div class="value">' + esc(resin) + '</div></div>';
     h += '</div><div class="pills">';
     h += '<span class="pill">' + esc(m.download_count || 0) + ' downloads</span>';
-    h += '<span class="pill">' + esc(rating) + '</span>';
+    h += '<span class="pill">&#9829; ' + esc(likeCount) + '</span>';
     if (m.bookmark_count) h += '<span class="pill">' + esc(m.bookmark_count) + ' bookmarks</span>';
     if (mine && m.status) h += '<span class="pill">' + esc(m.status) + '</span>';
     if (localName) h += '<span class="pill">On SD</span>';
     h += '</div></a><div class="connectActions">';
     if (localName) h += '<button class="small"' + (actionDisabled ? ' disabled' : '') + ' onclick="startPrint(\'' + enc(localName) + '\')">Print</button>';
     else h += '<button class="small secondaryBtn"' + (actionDisabled ? ' disabled' : '') + ' onclick="connectImportModel(\'' + enc(m.public_id) + '\',\'' + enc(m.model_name || 'Model') + '\',\'' + enc(m.download_url) + '\',\'' + enc(m.original_credits || '') + '\',\'' + enc(m.license || '') + '\',\'' + enc(m.preview_05_url || '') + '\',\'' + enc(m.preview_1_url || '') + '\',\'' + enc(m.resin_ml === null || m.resin_ml === undefined ? '' : m.resin_ml) + '\',\'' + enc(m.layers || '') + '\')">Import</button>';
+    h += '<button class="small secondaryBtn" onclick="connectLikeModel(\'' + enc(m.public_id) + '\',\'' + (m.liked ? '1' : '0') + '\')">' + (m.liked ? '&#9829; ' : '&#9825; ') + esc(likeCount) + '</button>';
     if (mine) {
       if (m.status === 'hidden') h += '<button class="small secondaryBtn" onclick="connectModelAction(\'' + enc(m.public_id) + '\',\'published\')">Publish</button>';
       else h += '<button class="small secondaryBtn" onclick="connectModelAction(\'' + enc(m.public_id) + '\',\'hidden\')">Hide</button>';
@@ -322,7 +352,8 @@
     m.layers,
     m.height_mm,
     m.resin_ml,
-    m.download_count
+    m.download_count,
+    m.like_count
   ].join(' ').toLowerCase();
   const renderConnectModelList = () => {
     const q = (byId('connectModelSearch') ? byId('connectModelSearch').value : '').trim().toLowerCase();
@@ -339,7 +370,7 @@
     byId('connectMineList').innerHTML = '<div class="hint">Loading your shared models...</div>';
     if (refreshLocal) try { await loadFiles(); } catch (e) {}
     try {
-      const all = await connectFetchJson('/api/models');
+      const all = await connectFetchJson('/api/models', true);
       connectModelItems = all.items || [];
       renderConnectModelList();
     } catch (e) { byId('connectModelsList').innerHTML = '<div class="hint warn">' + esc(e.message) + '</div>'; }
@@ -429,10 +460,12 @@
     if (!isDefault) h += '<span class="pill">' + formatBytes(a.sizeBytes || 0) + '</span>';
     if (a.version) h += '<span class="pill">v' + esc(a.version) + '</span>';
     if (a.connectPublicId) h += '<span class="pill">Connect</span>';
+    if (server) h += '<span class="pill">&#9829; ' + esc(server.like_count || 0) + '</span>';
     if (updateAvailable) h += '<span class="pill">Update available</span>';
     h += '</div><div class="connectActions">';
     if (!active) h += '<button class="small secondaryBtn"' + (actionDisabled ? ' disabled' : '') + ' onclick="connectActivateBootAnim(\'' + enc(isDefault ? '' : a.name) + '\')">Activate</button>';
     if (server && updateAvailable) h += '<button class="small"' + (installDisabled ? ' disabled' : '') + ' onclick="connectInstallBootAnim(\'' + enc(server.download_url || '') + '\',\'' + enc(server.install_name || server.animation_name || a.name || 'downloaded') + '\',\'' + enc(server.public_id || '') + '\',\'' + enc(server.animation_name || '') + '\',\'' + enc(server.version || '') + '\',\'' + enc(server.checksum_sha256 || '') + '\',\'' + enc(server.original_credits || '') + '\',\'' + enc(server.license || '') + '\')">Update</button>';
+    if (server) h += '<button class="small secondaryBtn" onclick="connectLikeBootAnim(\'' + enc(server.public_id || '') + '\',\'' + (server.liked ? '1' : '0') + '\')">' + (server.liked ? '&#9829; ' : '&#9825; ') + esc(server.like_count || 0) + '</button>';
     return h + '</div></div>';
   };
   const renderInstalledBootAnimations = d => {
@@ -459,13 +492,14 @@
     if (a.original_credits) h += '<span class="pill">' + esc(a.original_credits) + '</span>';
     if (a.license) h += '<span class="pill">' + esc(a.license) + '</span>';
     if (a.version) h += '<span class="pill">v' + esc(a.version) + '</span>';
-    h += '<span class="pill">' + formatBytes(a.file_size || 0) + '</span><span class="pill">' + esc(a.download_count || 0) + ' installs</span>';
+    h += '<span class="pill">' + formatBytes(a.file_size || 0) + '</span><span class="pill">' + esc(a.download_count || 0) + ' installs</span><span class="pill">&#9829; ' + esc(a.like_count || 0) + '</span>';
     if (local) h += '<span class="pill">Installed</span>';
     if (active) h += '<span class="pill">Active</span>';
     if (updateAvailable) h += '<span class="pill">Update available</span>';
     h += '</div><div class="connectActions">';
     if (local && !active) h += '<button class="small secondaryBtn"' + (actionDisabled ? ' disabled' : '') + ' onclick="connectActivateBootAnim(\'' + enc(local.name) + '\')">Activate</button>';
     h += '<button class="small' + (local && !updateAvailable ? ' secondaryBtn' : '') + '"' + (actionDisabled ? ' disabled' : '') + ' onclick="connectInstallBootAnim(\'' + enc(a.download_url || '') + '\',\'' + enc(a.install_name || a.animation_name || 'downloaded') + '\',\'' + enc(a.public_id || '') + '\',\'' + enc(a.animation_name || '') + '\',\'' + enc(a.version || '') + '\',\'' + enc(a.checksum_sha256 || '') + '\',\'' + enc(a.original_credits || '') + '\',\'' + enc(a.license || '') + '\')">' + (updateAvailable ? 'Update' : (local ? 'Reinstall' : 'Install')) + '</button>';
+    h += '<button class="small secondaryBtn" onclick="connectLikeBootAnim(\'' + enc(a.public_id || '') + '\',\'' + (a.liked ? '1' : '0') + '\')">' + (a.liked ? '&#9829; ' : '&#9825; ') + esc(a.like_count || 0) + '</button>';
     return h + '</div></div>';
   };
   const renderConnectBootAnimLibrary = () => {
@@ -482,7 +516,7 @@
     try { localData = await loadLocalBootAnimations(); }
     catch (e) { byId('connectInstalledBootAnimList').innerHTML = '<div class="hint warn">' + esc(e.message) + '</div>'; }
     try {
-      const all = await connectFetchJson('/api/boot-animations');
+      const all = await connectFetchJson('/api/boot-animations', true);
       connectBootAnimItems = all.items || [];
       renderConnectBootAnimLibrary();
     } catch (e) { byId('connectBootAnimList').innerHTML = '<div class="hint warn">' + esc(e.message) + '</div>'; }
@@ -502,7 +536,7 @@
       };
       byId('connectLeaderboardList').innerHTML = items.length ? items.map((r, i) =>
         '<div class="leaderRow"><div class="value">#' + (i + 1) + '</div><div><div class="value">' + esc(r.printer_name || r.public_id || 'TinyMaker') + '</div><div class="meta">' + esc(r.public_id || '') + '</div></div>' +
-        '<span class="pill">FW ' + esc(r.firmware_version || '-') + '</span><span class="pill">' + esc(fmtSecs(r.lifetime_print_secs)) + ' lifetime</span><span class="pill">' + esc(r.uploads || 0) + ' uploads</span><span class="pill">' + esc(r.downloads || 0) + ' downloads</span><span class="pill">' + esc(r.ratings || 0) + ' ratings</span><span class="pill">' + esc(r.bookmarks || 0) + ' bookmarks</span></div>'
+        '<span class="pill">FW ' + esc(r.firmware_version || '-') + '</span><span class="pill">' + esc(fmtSecs(r.lifetime_print_secs)) + ' lifetime</span><span class="pill">' + esc(r.uploads || 0) + ' uploads</span><span class="pill">' + esc(r.downloads || 0) + ' downloads</span><span class="pill">&#9829; ' + esc(r.likes || 0) + '</span><span class="pill">' + esc(r.bookmarks || 0) + ' bookmarks</span></div>'
       ).join('') : '<div class="hint">No printers opted in yet.</div>';
     } catch (e) { byId('connectLeaderboardList').innerHTML = '<div class="hint warn">' + esc(e.message) + '</div>'; }
   };

@@ -324,12 +324,16 @@ function api_stream_cached_full_firmware(string $path, string $tag): void
 
 function api_list_models(bool $mine = false): void
 {
+    $viewer = optional_printer();
+    $likedSelect = $viewer ? ', EXISTS(SELECT 1 FROM model_likes l WHERE l.model_id = models.id AND l.printer_id = ?) AS liked' : ', 0 AS liked';
     if ($mine) {
         $printer = require_printer();
-        $stmt = db()->prepare('SELECT * FROM models WHERE printer_id = ? AND status != "removed" ORDER BY created_at DESC LIMIT 100');
-        $stmt->execute([$printer['id']]);
+        $stmt = db()->prepare('SELECT models.*' . $likedSelect . ' FROM models WHERE printer_id = ? AND status != "removed" ORDER BY created_at DESC LIMIT 100');
+        $params = $viewer ? [$viewer['id'], $printer['id']] : [$printer['id']];
+        $stmt->execute($params);
     } else {
-        $stmt = db()->query('SELECT * FROM models WHERE status = "published" ORDER BY created_at DESC LIMIT 100');
+        $stmt = db()->prepare('SELECT models.*' . $likedSelect . ' FROM models WHERE status = "published" ORDER BY created_at DESC LIMIT 100');
+        $stmt->execute($viewer ? [$viewer['id']] : []);
     }
 
     $items = array_map('model_to_api', $stmt->fetchAll());
@@ -340,14 +344,14 @@ function api_list_bookmarks(): void
 {
     $printer = require_printer();
     $stmt = db()->prepare(
-        'SELECT m.*
+        'SELECT m.*, EXISTS(SELECT 1 FROM model_likes l WHERE l.model_id = m.id AND l.printer_id = ?) AS liked
          FROM model_bookmarks b
          JOIN models m ON m.id = b.model_id
          WHERE b.printer_id = ? AND m.status = "published"
          ORDER BY b.created_at DESC
          LIMIT 100'
     );
-    $stmt->execute([$printer['id']]);
+    $stmt->execute([$printer['id'], $printer['id']]);
     json_response(['ok' => true, 'items' => array_map('model_to_api', $stmt->fetchAll())]);
 }
 
@@ -357,12 +361,13 @@ function api_leaderboard(): void
         'SELECT p.public_id, p.printer_name, p.firmware_version, p.lifetime_print_secs,
           (SELECT COUNT(*) FROM models m WHERE m.printer_id = p.id AND m.status != "removed") AS uploads,
           (SELECT COUNT(*) FROM model_downloads d WHERE d.printer_id = p.id) AS downloads,
+          (SELECT COUNT(*) FROM model_likes l WHERE l.printer_id = p.id) AS likes,
           (SELECT COUNT(*) FROM model_ratings r WHERE r.printer_id = p.id) AS ratings,
           (SELECT COUNT(*) FROM model_bookmarks b WHERE b.printer_id = p.id) AS bookmarks,
           (SELECT COALESCE(SUM(m2.layers), 0) FROM models m2 WHERE m2.printer_id = p.id AND m2.status != "removed") AS uploaded_layers
          FROM printers p
          WHERE p.blocked = 0 AND p.leaderboard_opt_in = 1
-         ORDER BY uploads DESC, downloads DESC, ratings DESC
+         ORDER BY uploads DESC, downloads DESC, likes DESC
          LIMIT 50'
     );
     json_response(['ok' => true, 'items' => $stmt->fetchAll()]);
@@ -371,8 +376,10 @@ function api_leaderboard(): void
 function api_get_model(string $publicId): void
 {
     $publicId = clean_public_id($publicId);
-    $stmt = db()->prepare('SELECT * FROM models WHERE public_id = ? AND status = "published" LIMIT 1');
-    $stmt->execute([$publicId]);
+    $viewer = optional_printer();
+    $likedSelect = $viewer ? ', EXISTS(SELECT 1 FROM model_likes l WHERE l.model_id = models.id AND l.printer_id = ?) AS liked' : ', 0 AS liked';
+    $stmt = db()->prepare('SELECT models.*' . $likedSelect . ' FROM models WHERE public_id = ? AND status = "published" LIMIT 1');
+    $stmt->execute($viewer ? [$viewer['id'], $publicId] : [$publicId]);
     $model = $stmt->fetch();
     if (!$model) {
         error_response('model not found', 404);
@@ -478,12 +485,16 @@ function api_publish_model(): void
 
 function api_list_boot_animations(bool $mine = false): void
 {
+    $viewer = optional_printer();
+    $likedSelect = $viewer ? ', EXISTS(SELECT 1 FROM boot_animation_likes l WHERE l.animation_id = boot_animations.id AND l.printer_id = ?) AS liked' : ', 0 AS liked';
     if ($mine) {
         $printer = require_printer();
-        $stmt = db()->prepare('SELECT * FROM boot_animations WHERE printer_id = ? AND status != "removed" ORDER BY created_at DESC LIMIT 100');
-        $stmt->execute([$printer['id']]);
+        $stmt = db()->prepare('SELECT boot_animations.*' . $likedSelect . ' FROM boot_animations WHERE printer_id = ? AND status != "removed" ORDER BY created_at DESC LIMIT 100');
+        $params = $viewer ? [$viewer['id'], $printer['id']] : [$printer['id']];
+        $stmt->execute($params);
     } else {
-        $stmt = db()->query('SELECT * FROM boot_animations WHERE status = "published" ORDER BY created_at DESC LIMIT 100');
+        $stmt = db()->prepare('SELECT boot_animations.*' . $likedSelect . ' FROM boot_animations WHERE status = "published" ORDER BY created_at DESC LIMIT 100');
+        $stmt->execute($viewer ? [$viewer['id']] : []);
     }
 
     json_response(['ok' => true, 'items' => array_map('boot_animation_to_api', $stmt->fetchAll())]);
@@ -800,9 +811,63 @@ function api_bookmark_model(string $publicId, bool $bookmark): void
         }
     }
 
-    $stmt = db()->prepare('SELECT * FROM models WHERE id = ?');
-    $stmt->execute([$model['id']]);
+    $stmt = db()->prepare('SELECT models.*, EXISTS(SELECT 1 FROM model_likes l WHERE l.model_id = models.id AND l.printer_id = ?) AS liked FROM models WHERE id = ?');
+    $stmt->execute([$printer['id'], $model['id']]);
     json_response(['ok' => true, 'model' => model_to_api($stmt->fetch()), 'bookmarked' => $bookmark]);
+}
+
+function api_like_model(string $publicId, bool $like): void
+{
+    $publicId = clean_public_id($publicId);
+    $printer = require_printer();
+    $model = find_published_model($publicId);
+
+    if ($like) {
+        $stmt = db()->prepare('INSERT IGNORE INTO model_likes (model_id, printer_id) VALUES (?, ?)');
+        $stmt->execute([$model['id'], $printer['id']]);
+        if ($stmt->rowCount() > 0) {
+            $update = db()->prepare('UPDATE models SET like_count = like_count + 1 WHERE id = ?');
+            $update->execute([$model['id']]);
+        }
+    } else {
+        $stmt = db()->prepare('DELETE FROM model_likes WHERE model_id = ? AND printer_id = ?');
+        $stmt->execute([$model['id'], $printer['id']]);
+        if ($stmt->rowCount() > 0) {
+            $update = db()->prepare('UPDATE models SET like_count = GREATEST(like_count - 1, 0) WHERE id = ?');
+            $update->execute([$model['id']]);
+        }
+    }
+
+    $stmt = db()->prepare('SELECT models.*, EXISTS(SELECT 1 FROM model_likes l WHERE l.model_id = models.id AND l.printer_id = ?) AS liked FROM models WHERE id = ?');
+    $stmt->execute([$printer['id'], $model['id']]);
+    json_response(['ok' => true, 'model' => model_to_api($stmt->fetch()), 'liked' => $like]);
+}
+
+function api_like_boot_animation(string $publicId, bool $like): void
+{
+    $publicId = clean_public_id($publicId);
+    $printer = require_printer();
+    $animation = find_published_boot_animation($publicId);
+
+    if ($like) {
+        $stmt = db()->prepare('INSERT IGNORE INTO boot_animation_likes (animation_id, printer_id) VALUES (?, ?)');
+        $stmt->execute([$animation['id'], $printer['id']]);
+        if ($stmt->rowCount() > 0) {
+            $update = db()->prepare('UPDATE boot_animations SET like_count = like_count + 1 WHERE id = ?');
+            $update->execute([$animation['id']]);
+        }
+    } else {
+        $stmt = db()->prepare('DELETE FROM boot_animation_likes WHERE animation_id = ? AND printer_id = ?');
+        $stmt->execute([$animation['id'], $printer['id']]);
+        if ($stmt->rowCount() > 0) {
+            $update = db()->prepare('UPDATE boot_animations SET like_count = GREATEST(like_count - 1, 0) WHERE id = ?');
+            $update->execute([$animation['id']]);
+        }
+    }
+
+    $stmt = db()->prepare('SELECT boot_animations.*, EXISTS(SELECT 1 FROM boot_animation_likes l WHERE l.animation_id = boot_animations.id AND l.printer_id = ?) AS liked FROM boot_animations WHERE id = ?');
+    $stmt->execute([$printer['id'], $animation['id']]);
+    json_response(['ok' => true, 'animation' => boot_animation_to_api($stmt->fetch()), 'liked' => $like]);
 }
 
 function find_published_model(string $publicId): array
@@ -815,4 +880,16 @@ function find_published_model(string $publicId): array
         error_response('model not found', 404);
     }
     return $model;
+}
+
+function find_published_boot_animation(string $publicId): array
+{
+    $publicId = clean_public_id($publicId);
+    $stmt = db()->prepare('SELECT * FROM boot_animations WHERE public_id = ? AND status = "published" LIMIT 1');
+    $stmt->execute([$publicId]);
+    $animation = $stmt->fetch();
+    if (!$animation) {
+        error_response('animation not found', 404);
+    }
+    return $animation;
 }

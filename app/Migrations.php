@@ -220,6 +220,35 @@ function migrate_database(PDO $pdo): void
             )'
         );
     });
+
+    apply_migration($pdo, '013_likes', function (PDO $pdo): void {
+        add_column_if_missing($pdo, 'models', 'like_count', 'ALTER TABLE models ADD COLUMN like_count INT NOT NULL DEFAULT 0 AFTER bookmark_count');
+        add_column_if_missing($pdo, 'boot_animations', 'like_count', 'ALTER TABLE boot_animations ADD COLUMN like_count INT NOT NULL DEFAULT 0 AFTER download_count');
+
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS model_likes (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              model_id INT NOT NULL,
+              printer_id INT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE KEY idx_model_likes_model_printer_unique (model_id, printer_id),
+              CONSTRAINT fk_model_likes_model FOREIGN KEY (model_id) REFERENCES models(id),
+              CONSTRAINT fk_model_likes_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+            )'
+        );
+
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS boot_animation_likes (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              animation_id INT NOT NULL,
+              printer_id INT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE KEY idx_boot_animation_likes_animation_printer_unique (animation_id, printer_id),
+              CONSTRAINT fk_boot_animation_likes_animation FOREIGN KEY (animation_id) REFERENCES boot_animations(id),
+              CONSTRAINT fk_boot_animation_likes_printer FOREIGN KEY (printer_id) REFERENCES printers(id)
+            )'
+        );
+    });
 }
 
 function apply_migration(PDO $pdo, string $migration, callable $callback): void

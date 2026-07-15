@@ -106,7 +106,7 @@ function admin_stats(): array
         'printers' => (int)db()->query('SELECT COUNT(*) FROM printers')->fetchColumn(),
         'blocked' => (int)db()->query('SELECT COUNT(*) FROM printers WHERE blocked = 1')->fetchColumn(),
         'downloads' => (int)db()->query('SELECT COALESCE(SUM(download_count), 0) FROM models')->fetchColumn(),
-        'ratings' => (int)db()->query('SELECT COUNT(*) FROM model_ratings')->fetchColumn(),
+        'likes' => (int)db()->query('SELECT COUNT(*) FROM model_likes')->fetchColumn(),
         'bookmarks' => (int)db()->query('SELECT COUNT(*) FROM model_bookmarks')->fetchColumn(),
     ];
 }
@@ -196,11 +196,11 @@ function admin_leaderboard(): array
         'SELECT p.public_id, p.printer_name, p.firmware_version, p.lifetime_print_secs,
           (SELECT COUNT(*) FROM models m WHERE m.printer_id = p.id AND m.status != "removed") AS uploads,
           (SELECT COUNT(*) FROM model_downloads d WHERE d.printer_id = p.id) AS downloads,
-          (SELECT COUNT(*) FROM model_ratings r WHERE r.printer_id = p.id) AS ratings,
+          (SELECT COUNT(*) FROM model_likes l WHERE l.printer_id = p.id) AS likes,
           (SELECT COUNT(*) FROM model_bookmarks b WHERE b.printer_id = p.id) AS bookmarks,
           (SELECT COALESCE(SUM(m2.layers), 0) FROM models m2 WHERE m2.printer_id = p.id AND m2.status != "removed") AS uploaded_layers
          FROM printers p
-         ORDER BY uploads DESC, downloads DESC, ratings DESC
+         ORDER BY uploads DESC, downloads DESC, likes DESC
          LIMIT 50'
     );
     return $stmt->fetchAll();

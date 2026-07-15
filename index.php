@@ -37,15 +37,6 @@ function public_format_duration(int $seconds): string
     return $hours > 0 ? ($hours . 'h ' . $minutes . 'm') : ($minutes . 'm');
 }
 
-function public_rating_label(array $row): string
-{
-    $count = (int)($row['rating_count'] ?? 0);
-    if ($count < 1) {
-        return 'No ratings';
-    }
-    return number_format(((int)$row['rating_sum']) / $count, 1) . '/5';
-}
-
 $path = route_path();
 $parts = array_values(array_filter(explode('/', trim($path, '/'))));
 $model = null;
@@ -79,12 +70,12 @@ if (count($parts) === 2 && $parts[0] === 'model') {
         'SELECT p.public_id, p.printer_name, p.firmware_version, p.lifetime_print_secs,
           (SELECT COUNT(*) FROM models m WHERE m.printer_id = p.id AND m.status != "removed") AS uploads,
           (SELECT COUNT(*) FROM model_downloads d WHERE d.printer_id = p.id) AS downloads,
-          (SELECT COUNT(*) FROM model_ratings r WHERE r.printer_id = p.id) AS ratings,
+          (SELECT COUNT(*) FROM model_likes l WHERE l.printer_id = p.id) AS likes,
           (SELECT COUNT(*) FROM model_bookmarks b WHERE b.printer_id = p.id) AS bookmarks,
           (SELECT COALESCE(SUM(m2.layers), 0) FROM models m2 WHERE m2.printer_id = p.id AND m2.status != "removed") AS uploaded_layers
          FROM printers p
          WHERE p.blocked = 0 AND p.leaderboard_opt_in = 1
-         ORDER BY uploads DESC, downloads DESC, ratings DESC
+         ORDER BY uploads DESC, downloads DESC, likes DESC
          LIMIT 100'
     );
     $leaderboard = $stmt->fetchAll();
@@ -145,7 +136,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
         <div class="stat"><div class="label">Height</div><div class="value"><?= h((string)$model['height_mm']) ?> mm</div></div>
         <div class="stat"><div class="label">Resin</div><div class="value"><?= $model['resin_ml'] === null ? '-' : h((string)$model['resin_ml']) . ' ml' ?></div></div>
         <div class="stat"><div class="label">Downloads</div><div class="value"><?= (int)$model['download_count'] ?></div></div>
-        <div class="stat"><div class="label">Rating</div><div class="value"><?= h(public_rating_label($model)) ?></div></div>
+        <div class="stat"><div class="label">Likes</div><div class="value">&#9829; <?= (int)($model['like_count'] ?? 0) ?></div></div>
       </div>
       <p class="muted">Published <?= h($model['created_at']) ?></p>
       <p class="muted">SHA256</p>
@@ -172,6 +163,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
       <div class="stats">
         <div class="stat"><div class="label">Install name</div><div class="value"><?= h($animation['install_name']) ?></div></div>
         <div class="stat"><div class="label">Installs</div><div class="value"><?= (int)$animation['download_count'] ?></div></div>
+        <div class="stat"><div class="label">Likes</div><div class="value">&#9829; <?= (int)($animation['like_count'] ?? 0) ?></div></div>
         <div class="stat"><div class="label">Version</div><div class="value"><?= h($animation['version'] ?? '1.0.0') ?></div></div>
       </div>
       <p class="muted">Credits: <?= h($animation['original_credits']) ?></p>
@@ -233,7 +225,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
             <div class="stat"><div class="label">Height</div><div class="value"><?= h((string)$item['height_mm']) ?> mm</div></div>
             <div class="stat"><div class="label">Resin</div><div class="value"><?= $item['resin_ml'] === null ? '-' : h((string)$item['resin_ml']) . ' ml' ?></div></div>
             <div class="stat"><div class="label">Downloads</div><div class="value"><?= (int)$item['download_count'] ?></div></div>
-            <div class="stat"><div class="label">Rating</div><div class="value"><?= h(public_rating_label($item)) ?></div></div>
+            <div class="stat"><div class="label">Likes</div><div class="value">&#9829; <?= (int)($item['like_count'] ?? 0) ?></div></div>
           </div>
         </a>
       <?php endforeach; ?>
@@ -260,6 +252,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
               <span class="pill"><?= h($anim['install_name']) ?></span>
               <span class="pill"><?= public_format_bytes((int)$anim['file_size']) ?></span>
               <span class="pill"><?= (int)$anim['download_count'] ?> installs</span>
+              <span class="pill">&#9829; <?= (int)($anim['like_count'] ?? 0) ?></span>
             </div>
           </a>
         <?php endforeach; ?>
@@ -278,7 +271,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
       <div class="toolbar" id="leaderTabs">
         <button type="button" class="tab active" data-leader-sort="uploads">Uploads</button>
         <button type="button" class="tab" data-leader-sort="downloads">Downloads</button>
-        <button type="button" class="tab" data-leader-sort="ratings">Ratings</button>
+        <button type="button" class="tab" data-leader-sort="likes">Likes</button>
         <button type="button" class="tab" data-leader-sort="bookmarks">Bookmarks</button>
         <button type="button" class="tab" data-leader-sort="lifetime">Print time</button>
         <button type="button" class="tab" data-leader-sort="layers">Layers</button>
@@ -287,7 +280,7 @@ if (count($parts) === 2 && $parts[0] === 'model') {
     <?php if ($leaderboard): ?>
       <div id="leaderRows" class="leaderRows">
         <?php foreach ($leaderboard as $i => $row): ?>
-          <div class="leaderRow" data-uploads="<?= (int)$row['uploads'] ?>" data-downloads="<?= (int)$row['downloads'] ?>" data-ratings="<?= (int)$row['ratings'] ?>" data-bookmarks="<?= (int)$row['bookmarks'] ?>" data-lifetime="<?= (int)$row['lifetime_print_secs'] ?>" data-layers="<?= (int)$row['uploaded_layers'] ?>">
+          <div class="leaderRow" data-uploads="<?= (int)$row['uploads'] ?>" data-downloads="<?= (int)$row['downloads'] ?>" data-likes="<?= (int)$row['likes'] ?>" data-bookmarks="<?= (int)$row['bookmarks'] ?>" data-lifetime="<?= (int)$row['lifetime_print_secs'] ?>" data-layers="<?= (int)$row['uploaded_layers'] ?>">
             <div class="value" data-rank>#<?= $i + 1 ?></div>
             <div><div class="value"><?= h($row['printer_name'] ?: 'TinyMaker') ?></div><div class="muted hash"><?= h($row['public_id']) ?></div></div>
             <span class="pill">FW <?= h($row['firmware_version'] ?: '-') ?></span>
