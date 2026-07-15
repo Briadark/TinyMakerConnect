@@ -9,8 +9,8 @@ function tinymaker_connect_footer_css(): string
 function tinymaker_connect_footer(): string
 {
     return '<footer class="siteFooter">'
-        . '<p><a href="https://github.com/Briadark/TinyMakerConnect">TinyMakerConnect</a> is created and maintained by Brian Karmelk (<a href="https://github.com/Briadark">@Briadark</a>). It\'s an extension to the <a href="https://github.com/slibbinas/TinyMakerWifi">TinyMakerWifi firmware</a> by Viktoras Sidlauskas (<a href="https://github.com/slibbinas">@slibbinas</a>).</p>'
-        . '<p>With help from Tanner (<a href="https://github.com/Tann2019">@Tann2019</a>).</p>'
+        . '<p><a href="https://github.com/Briadark/TinyMakerConnect" target="_blank" rel="noopener">TinyMakerConnect</a> is created and maintained by Brian Karmelk (<a href="https://github.com/Briadark" target="_blank" rel="noopener">@Briadark</a>). It\'s an extension to the <a href="https://github.com/slibbinas/TinyMakerWifi" target="_blank" rel="noopener">TinyMakerWifi firmware</a> by Viktoras Sidlauskas (<a href="https://github.com/slibbinas" target="_blank" rel="noopener">@slibbinas</a>).</p>'
+        . '<p>With help from Tanner (<a href="https://github.com/Tann2019" target="_blank" rel="noopener">@Tann2019</a>).</p>'
         . '<p>TinyMaker hardware CC BY-NC-SA 4.0 &middot; Not affiliated with TinyMaker3D — but they like what we do 🙂</p>'
         . '</footer>';
 }
