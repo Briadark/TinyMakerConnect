@@ -44,7 +44,7 @@ if (!$admin):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TinyMaker Connect Admin Login</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="/connect-favicon.svg">
   <style>
     :root{color-scheme:dark;--bg:#111214;--panel:#1b1d20;--text:#f2f2f2;--muted:#a5a7ad;--line:#33363d;--accent:#e8720c;--bad:#d95c5c}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}main{width:min(440px,100%);margin:0 auto;padding:40px 20px}
@@ -85,7 +85,7 @@ try {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TinyMaker Connect Admin</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="/connect-favicon.svg">
   <style>
     :root{color-scheme:dark;--bg:#111214;--panel:#1b1d20;--text:#f2f2f2;--muted:#a5a7ad;--line:#33363d;--accent:#e8720c;--bad:#d95c5c;--ok:#3d9b55}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}main{width:min(1180px,100%);margin:0 auto;padding:22px}
