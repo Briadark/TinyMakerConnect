@@ -10,6 +10,7 @@ function tinymaker_connect_footer(): string
 {
     return '<footer class="siteFooter">'
         . '<p><a href="https://github.com/Briadark/TinyMakerConnect">TinyMakerConnect</a> is created and maintained by Brian Karmelk (<a href="https://github.com/Briadark">@Briadark</a>). It\'s an extension to the <a href="https://github.com/slibbinas/TinyMakerWifi">TinyMakerWifi firmware</a> by Viktoras Sidlauskas (<a href="https://github.com/slibbinas">@slibbinas</a>).</p>'
+        . '<p>Security hardening and CI by Tanner (<a href="https://github.com/Tann2019">@Tann2019</a>).</p>'
         . '<p>TinyMaker hardware CC BY-NC-SA 4.0 &middot; Not affiliated with TinyMaker3D — but they like what we do 🙂</p>'
         . '</footer>';
 }
