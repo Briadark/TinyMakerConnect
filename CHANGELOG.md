@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3 - Official logo assets
+
+- Switched Connect public/admin pages to the official TinyMaker Connect logo/favicon from TinyMakerWifi.
+- Switched the browser USB flash page to the official TinyMaker flash logo/favicon.
+- Removed the temporary generated favicon asset.
+
 ## 0.2.2 - Browser USB flash tool
 
 - Added a dedicated `/flash.php` first-time setup page for flashing TinyMakerWifi over USB from Chrome/Edge using Web Serial.
