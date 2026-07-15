@@ -163,6 +163,13 @@ function handle_admin_step(): void
 function installer_main(): void
 {
     if (request_method() === 'POST' && ($_POST['step'] ?? '') === 'mysql') {
+        if (config_is_installed()) {
+            install_page('Already configured',
+                '<div class="err">TinyMaker Connect is already configured. The database settings cannot be changed from the installer on a configured server.</div>' .
+                '<p class="muted">To reconfigure the database, edit or delete <code>app/config.php</code> directly on the server, then reload this page.</p>' .
+                '<a class="button" href="/admin.php">Open admin login</a>'
+            );
+        }
         handle_mysql_step();
     }
 
