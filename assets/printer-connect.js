@@ -17,7 +17,8 @@
       '.connectPreview img{width:100%;height:100%;object-fit:contain}.connectStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}' +
       '.connectStat{border-top:1px solid var(--line);padding-top:7px}.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.pill{border:1px solid var(--line);border-radius:999px;padding:3px 8px;color:var(--muted);font-size:12px}' +
       '.connectActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}' +
-      '.connectFilters{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.connectFilters button{background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--text);font-weight:700;padding:9px 12px}.connectFilters button.active{background:var(--accent);border-color:var(--accent);color:var(--accentText,#fff)}' +
+      '.connectSearchRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}.connectSearch{flex:1 1 240px;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--input,var(--pv));color:var(--text);padding:11px 12px;font:inherit}' +
+      '.connectFilters{display:flex;gap:8px;flex-wrap:wrap}.connectFilters button{background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--text);font-weight:700;padding:9px 12px}.connectFilters button.active{background:var(--accent);border-color:var(--accent);color:var(--accentText,#fff)}' +
       '.connectShareCanvas{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--pv);margin-top:10px}' +
       '.leaderRows{display:grid;gap:8px}.leaderRow{display:grid;grid-template-columns:36px minmax(0,1fr) repeat(6,auto);gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:10px}' +
       '.bootAnimPreview{aspect-ratio:2/1;background:var(--pv);border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px}' +
@@ -54,6 +55,7 @@
     xhr.send(fd);
   });
   let connectPreviewMode = localStorage.getItem('tmConnectPreviewMode') || '05';
+  let connectModelItems = [];
   const setConnectPreviewMode = mode => {
     connectPreviewMode = mode === '1' ? '1' : '05';
     localStorage.setItem('tmConnectPreviewMode', connectPreviewMode);
@@ -311,6 +313,22 @@
     }
     return h + '</div></div>';
   };
+  const connectModelSearchText = m => [
+    m.model_name,
+    m.original_credits,
+    m.license,
+    m.layers,
+    m.height_mm,
+    m.resin_ml,
+    m.download_count
+  ].join(' ').toLowerCase();
+  const renderConnectModelList = () => {
+    const q = (byId('connectModelSearch') ? byId('connectModelSearch').value : '').trim().toLowerCase();
+    const items = q ? connectModelItems.filter(m => connectModelSearchText(m).includes(q)) : connectModelItems.slice(0, 20);
+    if (!connectModelItems.length) byId('connectModelsList').innerHTML = '<div class="hint">No shared models yet.</div>';
+    else if (!items.length) byId('connectModelsList').innerHTML = '<div class="hint">No models match your search.</div>';
+    else byId('connectModelsList').innerHTML = '<div class="connectTiles">' + items.map(m => connectModelHtml(m, false)).join('') + '</div>';
+  };
 
   const loadConnectModels = async refreshLocal => {
     if (!connectIsReady()) return;
@@ -320,8 +338,8 @@
     if (refreshLocal) try { await loadFiles(); } catch (e) {}
     try {
       const all = await connectFetchJson('/api/models');
-      const items = all.items || [];
-      byId('connectModelsList').innerHTML = items.length ? '<div class="connectTiles">' + items.slice(0, 20).map(m => connectModelHtml(m, false)).join('') + '</div>' : '<div class="hint">No shared models yet.</div>';
+      connectModelItems = all.items || [];
+      renderConnectModelList();
     } catch (e) { byId('connectModelsList').innerHTML = '<div class="hint warn">' + esc(e.message) + '</div>'; }
     try {
       const mine = await connectFetchJson('/api/printers/me/models', true);
@@ -513,9 +531,12 @@
         '<div id="connectBrowserBox" class="hidden connectSection">' +
           '<h2>Models</h2>' +
           '<div class="hint">Shared models can be downloaded from TinyMaker Connect. To publish one of your own models, open SD manager, press Details, then Share model.</div>' +
-          '<div class="connectFilters">' +
-            '<button id="connectPreview05Button" type="button" class="active">Show 0.05 mm</button>' +
-            '<button id="connectPreview1Button" type="button">Show 0.10 mm</button>' +
+          '<div class="connectSearchRow">' +
+            '<input id="connectModelSearch" class="connectSearch" type="search" placeholder="Search models, credits or license">' +
+            '<div class="connectFilters">' +
+              '<button id="connectPreview05Button" type="button" class="active">Show 0.05 mm</button>' +
+              '<button id="connectPreview1Button" type="button">Show 0.10 mm</button>' +
+            '</div>' +
           '</div>' +
           '<div id="connectModelsList" class="files connectMt10"></div>' +
         '</div>' +
@@ -558,6 +579,7 @@
     bind('connectLeaderboardTabButton', 'click', () => setConnectTab('leaderboard'));
     bind('connectPreview05Button', 'click', () => setConnectPreviewMode('05'));
     bind('connectPreview1Button', 'click', () => setConnectPreviewMode('1'));
+    bind('connectModelSearch', 'input', renderConnectModelList);
     bind('connectBootAnimShuffleButton', 'click', () => connectActivateBootAnim('__shuffle'));
     bind('shareUploadButton', 'click', uploadSharedModel);
     bind('connectSetupButton', 'click', async () => {
