@@ -56,6 +56,8 @@
   });
   let connectPreviewMode = localStorage.getItem('tmConnectPreviewMode') || '05';
   let connectModelItems = [];
+  let connectBootAnimTab = localStorage.getItem('tmConnectBootAnimTab') || 'library';
+  let connectBootAnimItems = [];
   const setConnectPreviewMode = mode => {
     connectPreviewMode = mode === '1' ? '1' : '05';
     localStorage.setItem('tmConnectPreviewMode', connectPreviewMode);
@@ -388,6 +390,20 @@
       });
     });
   };
+  const renderVisibleBootAnimPreviews = () => {
+    clearBootAnimPreviews();
+    const root = connectBootAnimTab === 'installed' ? byId('connectBootAnimInstalledPanel') : byId('connectBootAnimLibraryPanel');
+    if (root) renderBootAnimPreviews(root);
+  };
+  const setConnectBootAnimTab = tab => {
+    connectBootAnimTab = tab === 'installed' ? 'installed' : 'library';
+    localStorage.setItem('tmConnectBootAnimTab', connectBootAnimTab);
+    show('connectBootAnimLibraryPanel', connectBootAnimTab === 'library');
+    show('connectBootAnimInstalledPanel', connectBootAnimTab === 'installed');
+    if (byId('connectBootAnimLibraryButton')) byId('connectBootAnimLibraryButton').classList.toggle('active', connectBootAnimTab === 'library');
+    if (byId('connectBootAnimInstalledButton')) byId('connectBootAnimInstalledButton').classList.toggle('active', connectBootAnimTab === 'installed');
+    renderVisibleBootAnimPreviews();
+  };
   const loadLocalBootAnimations = async () => {
     const d = await api('/api/boot-anim');
     activeBootAnim = d.selected || '';
@@ -398,6 +414,9 @@
   const connectInstalledBootAnimHtml = (a, isDefault) => {
     const active = isDefault ? !activeBootAnim : activeBootAnim === a.name;
     const actionDisabled = (statusData && statusData.busy) || (statusData && statusData.webControl === false);
+    const installDisabled = actionDisabled || (statusData && statusData.sdReady === false);
+    const server = isDefault ? null : connectBootAnimItems.find(x => (a.connectPublicId && x.public_id === a.connectPublicId) || (x.install_name && x.install_name === a.name));
+    const updateAvailable = !!(server && ((server.version && a.version && server.version !== a.version) || (server.checksum_sha256 && a.checksumSha256 && server.checksum_sha256 !== a.checksumSha256)));
     let h = '<div class="connectTile">';
     if (isDefault) h += '<div class="bootAnimPreview"><span class="meta">Built-in TinyMaker boot screen</span></div>';
     else {
@@ -410,8 +429,10 @@
     if (!isDefault) h += '<span class="pill">' + formatBytes(a.sizeBytes || 0) + '</span>';
     if (a.version) h += '<span class="pill">v' + esc(a.version) + '</span>';
     if (a.connectPublicId) h += '<span class="pill">Connect</span>';
+    if (updateAvailable) h += '<span class="pill">Update available</span>';
     h += '</div><div class="connectActions">';
     if (!active) h += '<button class="small secondaryBtn"' + (actionDisabled ? ' disabled' : '') + ' onclick="connectActivateBootAnim(\'' + enc(isDefault ? '' : a.name) + '\')">Activate</button>';
+    if (server && updateAvailable) h += '<button class="small"' + (installDisabled ? ' disabled' : '') + ' onclick="connectInstallBootAnim(\'' + enc(server.download_url || '') + '\',\'' + enc(server.install_name || server.animation_name || a.name || 'downloaded') + '\',\'' + enc(server.public_id || '') + '\',\'' + enc(server.animation_name || '') + '\',\'' + enc(server.version || '') + '\',\'' + enc(server.checksum_sha256 || '') + '\',\'' + enc(server.original_credits || '') + '\',\'' + enc(server.license || '') + '\')">Update</button>';
     return h + '</div></div>';
   };
   const renderInstalledBootAnimations = d => {
@@ -423,7 +444,6 @@
       byId('connectBootAnimShuffleButton').textContent = shuffleActive ? 'Shuffle active' : 'Shuffle installed';
     }
     byId('connectInstalledBootAnimList').innerHTML = '<div class="connectTiles">' + [connectInstalledBootAnimHtml({}, true)].concat(items.map(a => connectInstalledBootAnimHtml(a, false))).join('') + '</div>';
-    renderBootAnimPreviews(byId('connectInstalledBootAnimList'));
   };
   const connectBootAnimHtml = a => {
     const actionDisabled = (statusData && statusData.busy) || (statusData && statusData.webControl === false) || (statusData && statusData.sdReady === false);
@@ -448,20 +468,26 @@
     h += '<button class="small' + (local && !updateAvailable ? ' secondaryBtn' : '') + '"' + (actionDisabled ? ' disabled' : '') + ' onclick="connectInstallBootAnim(\'' + enc(a.download_url || '') + '\',\'' + enc(a.install_name || a.animation_name || 'downloaded') + '\',\'' + enc(a.public_id || '') + '\',\'' + enc(a.animation_name || '') + '\',\'' + enc(a.version || '') + '\',\'' + enc(a.checksum_sha256 || '') + '\',\'' + enc(a.original_credits || '') + '\',\'' + enc(a.license || '') + '\')">' + (updateAvailable ? 'Update' : (local ? 'Reinstall' : 'Install')) + '</button>';
     return h + '</div></div>';
   };
+  const renderConnectBootAnimLibrary = () => {
+    byId('connectBootAnimList').innerHTML = connectBootAnimItems.length ? '<div class="connectTiles">' + connectBootAnimItems.map(connectBootAnimHtml).join('') + '</div>' : '<div class="hint">No boot animations published yet.</div>';
+  };
   const loadConnectBootAnimations = async () => {
     if (!connectIsReady()) return;
     clearBootAnimPreviews();
+    connectBootAnimItems = [];
     byId('connectInstalledBootAnimList').innerHTML = '<div class="hint">Loading installed boot animations...</div>';
     byId('connectBootAnimList').innerHTML = '<div class="hint">Loading boot animations...</div>';
     show('connectBootAnimShuffleBox', false);
-    try { renderInstalledBootAnimations(await loadLocalBootAnimations()); }
+    let localData = null;
+    try { localData = await loadLocalBootAnimations(); }
     catch (e) { byId('connectInstalledBootAnimList').innerHTML = '<div class="hint warn">' + esc(e.message) + '</div>'; }
     try {
       const all = await connectFetchJson('/api/boot-animations');
-      const items = all.items || [];
-      byId('connectBootAnimList').innerHTML = items.length ? '<div class="connectTiles">' + items.map(connectBootAnimHtml).join('') + '</div>' : '<div class="hint">No boot animations published yet.</div>';
-      renderBootAnimPreviews(byId('connectBootAnimList'));
+      connectBootAnimItems = all.items || [];
+      renderConnectBootAnimLibrary();
     } catch (e) { byId('connectBootAnimList').innerHTML = '<div class="hint warn">' + esc(e.message) + '</div>'; }
+    if (localData) renderInstalledBootAnimations(localData);
+    setConnectBootAnimTab(connectBootAnimTab);
   };
   const loadConnectLeaderboard = async () => {
     if (!connectIsReady()) return;
@@ -549,13 +575,19 @@
       '<div id="connectBootAnimsPane" class="hidden connectSection">' +
         '<h2>Boot animations</h2>' +
         '<div class="hint">Install community boot animations to the SD card. The installed animation becomes the active power-on animation.</div>' +
-        '<h2 class="connectSubhead">Installed</h2>' +
-        '<div id="connectInstalledBootAnimList" class="files connectMt10"></div>' +
-        '<div id="connectBootAnimShuffleBox" class="actions hidden connectMt10">' +
-          '<button id="connectBootAnimShuffleButton" class="button secondary" type="button">Shuffle installed</button>' +
+        '<div class="connectFilters connectMt10">' +
+          '<button id="connectBootAnimLibraryButton" type="button" class="active">Connect library</button>' +
+          '<button id="connectBootAnimInstalledButton" type="button">Installed</button>' +
         '</div>' +
-        '<h2 class="connectSubhead">Connect library</h2>' +
-        '<div id="connectBootAnimList" class="files connectMt10"></div>' +
+        '<div id="connectBootAnimLibraryPanel" class="connectMt10">' +
+          '<div id="connectBootAnimList" class="files"></div>' +
+        '</div>' +
+        '<div id="connectBootAnimInstalledPanel" class="hidden connectMt10">' +
+          '<div id="connectBootAnimShuffleBox" class="actions hidden connectMt10">' +
+            '<button id="connectBootAnimShuffleButton" class="button secondary" type="button">Shuffle installed</button>' +
+          '</div>' +
+          '<div id="connectInstalledBootAnimList" class="files connectMt10"></div>' +
+        '</div>' +
       '</div>' +
       '<div id="connectLeaderboardPane" class="hidden connectSection">' +
         '<h2>Leaderboard</h2>' +
@@ -580,6 +612,8 @@
     bind('connectPreview05Button', 'click', () => setConnectPreviewMode('05'));
     bind('connectPreview1Button', 'click', () => setConnectPreviewMode('1'));
     bind('connectModelSearch', 'input', renderConnectModelList);
+    bind('connectBootAnimLibraryButton', 'click', () => setConnectBootAnimTab('library'));
+    bind('connectBootAnimInstalledButton', 'click', () => setConnectBootAnimTab('installed'));
     bind('connectBootAnimShuffleButton', 'click', () => connectActivateBootAnim('__shuffle'));
     bind('shareUploadButton', 'click', uploadSharedModel);
     bind('connectSetupButton', 'click', async () => {
