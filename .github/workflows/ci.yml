@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-unit:
+    name: Lint and unit tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.0', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, fileinfo, openssl, curl, zip
+      - name: PHP syntax check
+        run: |
+          set -e
+          find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+          echo "All PHP files pass syntax check."
+      - name: Unit tests
+        run: php tests/unit.php
+
+  integration:
+    name: Integration tests (installer, API, admin)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: tinymaker
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, fileinfo, openssl, curl, zip
+      - name: Start test server
+        run: |
+          php -S 127.0.0.1:8080 tests/router.php > /tmp/php-server.log 2>&1 &
+          for i in $(seq 1 20); do
+            curl -s -o /dev/null http://127.0.0.1:8080/health.php && break
+            sleep 1
+          done
+      - name: Run integration tests
+        env:
+          BASE_URL: http://127.0.0.1:8080
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: tinymaker
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/integration.php
+      - name: Show server log on failure
+        if: failure()
+        run: cat /tmp/php-server.log

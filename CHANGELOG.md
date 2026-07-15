@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased - Security hardening and CI
+
+- Fixed the installer accepting new MySQL settings on an already-configured server, which allowed anyone to overwrite `app/config.php` and take over the instance. Reconfiguring now requires editing or deleting `app/config.php` on the server.
+- Hardened admin session cookies with `HttpOnly`, `SameSite=Lax` and `Secure` (on HTTPS) regardless of host `php.ini` defaults.
+- Added CSRF protection to the admin login form and changed logout to a CSRF-protected POST action.
+- Added per-IP throttling for failed admin logins and failed printer reclaim attempts, with database migration `012_auth_throttle`.
+- Removed the `?publish_token=` query-string fallback so printer tokens no longer leak into access logs. Headers (`X-TinyMaker-Token`) and POST fields continue to work unchanged.
+- Hardened the server self-updater: updates are fully staged and validated before any file is written, target paths are verified to stay inside the app root, the download URL must be a GitHub API URL, and oversized packages are rejected.
+- Added logging for API server errors and failed admin logins.
+- Added GitHub Actions CI with PHP syntax checks (PHP 8.0 and 8.3), unit tests, and an end-to-end integration suite covering the installer, printer registration/reclaim, token auth, throttling and the admin login flow.
+- Blocked web access to the new `tests/` folder in `.htaccess`.
+
 ## 0.2.2 - Browser USB flash tool
 
 - Added a dedicated `/flash.php` first-time setup page for flashing TinyMakerWifi over USB from Chrome/Edge using Web Serial.
