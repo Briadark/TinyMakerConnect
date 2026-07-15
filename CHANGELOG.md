@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.6 - Connect likes
+
+- Added model likes with one heart per printer.
+- Added boot animation likes with one heart per printer.
+- Added heart buttons and counts beside model import/print actions in the hosted printer dashboard.
+- Added heart buttons and counts beside boot animation install/update actions.
+- Added like counts to public model pages, model tiles, boot animation pages, boot animation tiles, admin views and leaderboards.
+- Added database migration `013_likes` for model and boot animation like tracking.
+- Kept the existing rating tables/API in place for possible future star ratings.
+
 ## 0.2.5 - Security hardening and CI
 
 - Fixed the installer accepting new MySQL settings on an already-configured server, which allowed anyone to overwrite `app/config.php` and take over the instance. Reconfiguring now requires editing or deleting `app/config.php` on the server.
