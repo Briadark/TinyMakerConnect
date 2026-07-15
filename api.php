@@ -105,5 +105,6 @@ try {
 
     error_response('not found', 404);
 } catch (Throwable $e) {
+    error_log('TinyMakerConnect API error [' . request_method() . ' ' . route_path() . ']: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     error_response('server error', 500);
 }

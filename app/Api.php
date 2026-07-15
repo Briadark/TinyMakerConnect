@@ -134,6 +134,10 @@ function api_reclaim_printer(): void
         error_response('hardware_id and recovery_code required', 400);
     }
 
+    if (throttle_is_blocked('printer_reclaim', 10, 300)) {
+        error_response('too many attempts, try again later', 429);
+    }
+
     $firmware = clean_string((string)($_POST['firmware_version'] ?? ''), 32);
     $name = clean_string((string)($_POST['printer_name'] ?? ''), 80);
     $leaderboard = request_truthy('leaderboard_opt_in') ? 1 : 0;
@@ -143,8 +147,10 @@ function api_reclaim_printer(): void
     $stmt->execute([$hash]);
     $printer = $stmt->fetch();
     if (!$printer || !hash_equals((string)$printer['recovery_token'], $recovery)) {
+        throttle_record_failure('printer_reclaim');
         error_response('invalid recovery code', 401);
     }
+    throttle_clear('printer_reclaim');
     $update = db()->prepare('UPDATE printers SET firmware_version = ?, printer_name = COALESCE(NULLIF(?, ""), printer_name), leaderboard_opt_in = ?, last_seen = NOW() WHERE id = ?');
     $update->execute([$firmware ?: null, $name, $leaderboard, $printer['id']]);
     $printer['firmware_version'] = $firmware ?: $printer['firmware_version'];
