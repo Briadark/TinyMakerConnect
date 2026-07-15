@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.4 - Hosted Connect theme polish
+
+- Updated the hosted printer Connect tab to follow the firmware dashboard light/dark theme variables.
+- Replaced hardcoded dark tile, preview, border, text and accent colors in the hosted Connect UI.
+- Split the 0.05 mm / 0.10 mm preview selector into a filter control instead of reusing the main Connect tab styling.
+- Simplified model import status text so Connect imports read as one import-to-SD flow.
+
+## 0.2.3 - Official logo assets
+
+- Switched Connect public/admin pages to the official TinyMaker Connect logo/favicon from TinyMakerWifi.
+- Switched the browser USB flash page to the official TinyMaker flash logo/favicon.
+- Removed the temporary generated favicon asset.
+
 ## 0.2.2 - Browser USB flash tool
 
 - Added a dedicated `/flash.php` first-time setup page for flashing TinyMakerWifi over USB from Chrome/Edge using Web Serial.

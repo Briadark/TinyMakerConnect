@@ -10,14 +10,18 @@
     const style = document.createElement('style');
     style.id = 'tinymakerConnectHostedStyle';
     style.textContent =
+      '.connectHosted .hint{color:var(--muted)}.connectHosted .hint.warn{color:var(--warn,var(--accent))}.connectNoTop{margin-top:0}.connectMt10{margin-top:10px}.connectMt12{margin-top:12px}.connectSection,.connectSubhead{margin-top:14px}' +
       '.connectTiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}' +
-      '.connectTile{background:#202024;border:1px solid #3a3a3f;border-radius:8px;padding:12px;text-decoration:none;color:#eee}.connectTile>a{display:block;color:inherit;text-decoration:none}' +
-      '.connectTile:hover{border-color:#e8720c;text-decoration:none}.connectPreview{aspect-ratio:4/3;background:#151517;border:1px solid #3a3a3f;border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px}' +
+      '.connectTile{background:var(--tile);border:1px solid var(--line);border-radius:8px;padding:12px;text-decoration:none;color:var(--text)}.connectTile>a{display:block;color:inherit;text-decoration:none}' +
+      '.connectTile:hover{border-color:var(--accent);text-decoration:none}.connectPreview{aspect-ratio:4/3;background:var(--pv);border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px}' +
       '.connectPreview img{width:100%;height:100%;object-fit:contain}.connectStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}' +
-      '.connectStat{border-top:1px solid #3a3a3f;padding-top:7px}.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.pill{border:1px solid #3a3a3f;border-radius:999px;padding:3px 8px;color:#aaa;font-size:12px}' +
+      '.connectStat{border-top:1px solid var(--line);padding-top:7px}.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.pill{border:1px solid var(--line);border-radius:999px;padding:3px 8px;color:var(--muted);font-size:12px}' +
       '.connectActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}' +
-      '.leaderRows{display:grid;gap:8px}.leaderRow{display:grid;grid-template-columns:36px minmax(0,1fr) repeat(6,auto);gap:8px;align-items:center;border-top:1px solid #3a3a3f;padding-top:10px}' +
-      '.bootAnimPreview{aspect-ratio:2/1;background:#050506;border:1px solid #3a3a3f;border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px}' +
+      '.connectSearchRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}.connectSearch{flex:1 1 240px;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--input,var(--pv));color:var(--text);padding:11px 12px;font:inherit}' +
+      '.connectFilters{display:flex;gap:8px;flex-wrap:wrap}.connectFilters button{background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--text);font-weight:700;padding:9px 12px}.connectFilters button.active{background:var(--accent);border-color:var(--accent);color:var(--accentText,#fff)}' +
+      '.connectShareCanvas{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--pv);margin-top:10px}' +
+      '.leaderRows{display:grid;gap:8px}.leaderRow{display:grid;grid-template-columns:36px minmax(0,1fr) repeat(6,auto);gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:10px}' +
+      '.bootAnimPreview{aspect-ratio:2/1;background:var(--pv);border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px}' +
       '.bootAnimPreview canvas{width:100%;height:100%;image-rendering:pixelated}' +
       '@media(max-width:520px){.leaderRow{grid-template-columns:32px minmax(0,1fr);gap:4px}.leaderRow .pill{width:max-content}}';
     document.head.appendChild(style);
@@ -51,6 +55,7 @@
     xhr.send(fd);
   });
   let connectPreviewMode = localStorage.getItem('tmConnectPreviewMode') || '05';
+  let connectModelItems = [];
   const setConnectPreviewMode = mode => {
     connectPreviewMode = mode === '1' ? '1' : '05';
     localStorage.setItem('tmConnectPreviewMode', connectPreviewMode);
@@ -103,7 +108,7 @@
     if (!await uiConfirm('Import ' + name + ' to the printer SD card?')) return;
     const url = connectBase() + downloadUrl;
     try {
-      msg('Downloading ' + name + ' from TinyMaker Connect...');
+      msg('Importing ' + name + ' to SD...');
       const r = await fetch(url, { cache: 'no-store', headers: connectAuthHeaders() });
       if (!r.ok) throw new Error('download failed (HTTP ' + r.status + ')');
       const blob = await r.blob();
@@ -308,6 +313,22 @@
     }
     return h + '</div></div>';
   };
+  const connectModelSearchText = m => [
+    m.model_name,
+    m.original_credits,
+    m.license,
+    m.layers,
+    m.height_mm,
+    m.resin_ml,
+    m.download_count
+  ].join(' ').toLowerCase();
+  const renderConnectModelList = () => {
+    const q = (byId('connectModelSearch') ? byId('connectModelSearch').value : '').trim().toLowerCase();
+    const items = q ? connectModelItems.filter(m => connectModelSearchText(m).includes(q)) : connectModelItems.slice(0, 20);
+    if (!connectModelItems.length) byId('connectModelsList').innerHTML = '<div class="hint">No shared models yet.</div>';
+    else if (!items.length) byId('connectModelsList').innerHTML = '<div class="hint">No models match your search.</div>';
+    else byId('connectModelsList').innerHTML = '<div class="connectTiles">' + items.map(m => connectModelHtml(m, false)).join('') + '</div>';
+  };
 
   const loadConnectModels = async refreshLocal => {
     if (!connectIsReady()) return;
@@ -317,8 +338,8 @@
     if (refreshLocal) try { await loadFiles(); } catch (e) {}
     try {
       const all = await connectFetchJson('/api/models');
-      const items = all.items || [];
-      byId('connectModelsList').innerHTML = items.length ? '<div class="connectTiles">' + items.slice(0, 20).map(m => connectModelHtml(m, false)).join('') + '</div>' : '<div class="hint">No shared models yet.</div>';
+      connectModelItems = all.items || [];
+      renderConnectModelList();
     } catch (e) { byId('connectModelsList').innerHTML = '<div class="hint warn">' + esc(e.message) + '</div>'; }
     try {
       const mine = await connectFetchJson('/api/printers/me/models', true);
@@ -482,10 +503,11 @@
     if (!root || rendered) return;
     injectCss();
     rendered = true;
+    root.classList.add('connectHosted');
     root.innerHTML =
       '<h2>TinyMaker Connect</h2>' +
       '<div id="connectReadyBox" class="hidden">' +
-        '<div class="hint" style="margin-top:0">Registered as <b id="connectPrinterIdValue">-</b> &middot; <a href="#" id="connectSettingsButton">Connect settings</a></div>' +
+        '<div class="hint connectNoTop">Registered as <b id="connectPrinterIdValue">-</b> &middot; <a href="#" id="connectSettingsButton">Connect settings</a></div>' +
         '<div id="connectReadyHint" class="hint">This printer is ready to publish and manage TinyMaker Connect models.</div>' +
         '<div class="connectTabs">' +
           '<button id="connectModelsTabButton" type="button" class="active">Models</button>' +
@@ -494,52 +516,55 @@
         '</div>' +
       '</div>' +
       '<div id="connectModelsPane">' +
-        '<div id="connectPublishBox" class="hidden" style="margin-top:14px">' +
+        '<div id="connectPublishBox" class="hidden connectSection">' +
           '<h2>Share model</h2>' +
           '<div class="configGrid">' +
             '<label><span>Model name</span><input id="shareModelName" type="text" maxlength="120"></label>' +
             '<label><span>Original credits</span><input id="shareCredits" type="text" maxlength="255"></label>' +
             '<label><span>License</span><input id="shareLicense" type="text" maxlength="32" value="CC-BY-NC"></label>' +
           '</div>' +
-          '<canvas id="connectPreviewCanvas" class="hidden" style="width:100%;border:1px solid #3a3a3f;border-radius:8px;background:#151517;margin-top:10px"></canvas>' +
+          '<canvas id="connectPreviewCanvas" class="hidden connectShareCanvas"></canvas>' +
           '<div id="shareSteps" class="hint"></div>' +
           '<div id="shareProgress" class="storageBar hidden"><span id="shareProgressFill"></span></div>' +
           '<button id="shareUploadButton" class="hidden" type="button">Upload model</button>' +
         '</div>' +
-        '<div id="connectBrowserBox" class="hidden" style="margin-top:14px">' +
+        '<div id="connectBrowserBox" class="hidden connectSection">' +
           '<h2>Models</h2>' +
           '<div class="hint">Shared models can be downloaded from TinyMaker Connect. To publish one of your own models, open SD manager, press Details, then Share model.</div>' +
-          '<div class="connectTabs" style="margin-top:10px">' +
-            '<button id="connectPreview05Button" type="button" class="active">Show 0.05 mm</button>' +
-            '<button id="connectPreview1Button" type="button">Show 0.10 mm</button>' +
+          '<div class="connectSearchRow">' +
+            '<input id="connectModelSearch" class="connectSearch" type="search" placeholder="Search models, credits or license">' +
+            '<div class="connectFilters">' +
+              '<button id="connectPreview05Button" type="button" class="active">Show 0.05 mm</button>' +
+              '<button id="connectPreview1Button" type="button">Show 0.10 mm</button>' +
+            '</div>' +
           '</div>' +
-          '<div id="connectModelsList" class="files" style="margin-top:10px"></div>' +
+          '<div id="connectModelsList" class="files connectMt10"></div>' +
         '</div>' +
-        '<div id="connectManagerBox" class="hidden" style="margin-top:14px">' +
+        '<div id="connectManagerBox" class="hidden connectSection">' +
           '<h2>Manager</h2>' +
           '<div class="hint">Models shared by this printer can be hidden, republished, or removed here.</div>' +
-          '<div id="connectMineList" class="files" style="margin-top:10px"></div>' +
+          '<div id="connectMineList" class="files connectMt10"></div>' +
         '</div>' +
       '</div>' +
-      '<div id="connectBootAnimsPane" class="hidden" style="margin-top:14px">' +
+      '<div id="connectBootAnimsPane" class="hidden connectSection">' +
         '<h2>Boot animations</h2>' +
         '<div class="hint">Install community boot animations to the SD card. The installed animation becomes the active power-on animation.</div>' +
-        '<h2 style="margin-top:14px">Installed</h2>' +
-        '<div id="connectInstalledBootAnimList" class="files" style="margin-top:10px"></div>' +
-        '<div id="connectBootAnimShuffleBox" class="actions hidden" style="margin-top:10px">' +
+        '<h2 class="connectSubhead">Installed</h2>' +
+        '<div id="connectInstalledBootAnimList" class="files connectMt10"></div>' +
+        '<div id="connectBootAnimShuffleBox" class="actions hidden connectMt10">' +
           '<button id="connectBootAnimShuffleButton" class="button secondary" type="button">Shuffle installed</button>' +
         '</div>' +
-        '<h2 style="margin-top:14px">Connect library</h2>' +
-        '<div id="connectBootAnimList" class="files" style="margin-top:10px"></div>' +
+        '<h2 class="connectSubhead">Connect library</h2>' +
+        '<div id="connectBootAnimList" class="files connectMt10"></div>' +
       '</div>' +
-      '<div id="connectLeaderboardPane" class="hidden" style="margin-top:14px">' +
+      '<div id="connectLeaderboardPane" class="hidden connectSection">' +
         '<h2>Leaderboard</h2>' +
         '<div class="hint">Shows printers that opted in to public leaderboard stats.</div>' +
-        '<div id="connectLeaderboardList" class="leaderRows" style="margin-top:10px"></div>' +
+        '<div id="connectLeaderboardList" class="leaderRows connectMt10"></div>' +
       '</div>' +
       '<div id="connectSetupBox">' +
         '<div class="hint">TinyMaker Connect is not configured on this printer yet.</div>' +
-        '<div class="grid" style="margin-top:12px">' +
+        '<div class="grid connectMt12">' +
           '<div><div class="label">Step 1</div><div class="value">Enable Connect</div></div>' +
           '<div><div class="label">Step 2</div><div class="value">Test server</div></div>' +
           '<div><div class="label">Step 3</div><div class="value">Register printer</div></div>' +
@@ -554,6 +579,7 @@
     bind('connectLeaderboardTabButton', 'click', () => setConnectTab('leaderboard'));
     bind('connectPreview05Button', 'click', () => setConnectPreviewMode('05'));
     bind('connectPreview1Button', 'click', () => setConnectPreviewMode('1'));
+    bind('connectModelSearch', 'input', renderConnectModelList);
     bind('connectBootAnimShuffleButton', 'click', () => connectActivateBootAnim('__shuffle'));
     bind('shareUploadButton', 'click', uploadSharedModel);
     bind('connectSetupButton', 'click', async () => {
