@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/Migrations.php';
 
-const TINYMAKER_CONNECT_VERSION = '0.2.4';
+const TINYMAKER_CONNECT_VERSION = '0.2.5';
 
 function cors_headers(): void
 {
@@ -229,7 +229,6 @@ function printer_token_from_request(): string
         ?? $_SERVER['HTTP_X_TINYMAKER_TOKEN']
         ?? $_SERVER['REDIRECT_HTTP_X_TINYMAKER_TOKEN']
         ?? $_POST['publish_token']
-        ?? $_GET['publish_token']
         ?? '');
 }
 
@@ -281,4 +280,42 @@ function ip_hash(): string
 {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     return hash('sha256', config()['security']['server_salt'] . '|' . $ip);
+}
+
+function request_is_https(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+    return strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+}
+
+function throttle_is_blocked(string $scope, int $maxFailures = 5, int $cooldownSecs = 300): bool
+{
+    $stmt = db()->prepare('SELECT failed_attempts, last_failed_at FROM auth_throttle WHERE scope = ? AND identity = ? LIMIT 1');
+    $stmt->execute([$scope, ip_hash()]);
+    $row = $stmt->fetch();
+    if (!$row || (int)$row['failed_attempts'] < $maxFailures) {
+        return false;
+    }
+    if (time() - (int)$row['last_failed_at'] >= $cooldownSecs) {
+        throttle_clear($scope);
+        return false;
+    }
+    return true;
+}
+
+function throttle_record_failure(string $scope): void
+{
+    $stmt = db()->prepare(
+        'INSERT INTO auth_throttle (scope, identity, failed_attempts, last_failed_at) VALUES (?, ?, 1, ?)
+         ON DUPLICATE KEY UPDATE failed_attempts = failed_attempts + 1, last_failed_at = VALUES(last_failed_at)'
+    );
+    $stmt->execute([$scope, ip_hash(), time()]);
+}
+
+function throttle_clear(string $scope): void
+{
+    $stmt = db()->prepare('DELETE FROM auth_throttle WHERE scope = ? AND identity = ?');
+    $stmt->execute([$scope, ip_hash()]);
 }

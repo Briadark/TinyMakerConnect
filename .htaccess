@@ -7,7 +7,7 @@ RewriteEngine On
   </Files>
 </IfModule>
 
-RewriteRule ^(app|storage)(/.*)?$ - [F,L]
+RewriteRule ^(app|storage|tests)(/.*)?$ - [F,L]
 RewriteRule ^(README\.md|schema\.sql|app_loader\.php)$ - [F,L]
 
 RewriteRule ^admin/?$ admin.php [QSA,L]

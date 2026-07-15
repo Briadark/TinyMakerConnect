@@ -8,6 +8,13 @@ function admin_session(): void
 {
     if (session_status() === PHP_SESSION_NONE) {
         session_name('tinymaker_admin');
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'secure' => request_is_https(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
         session_start();
     }
 }
@@ -52,15 +59,23 @@ function require_admin(): array
     return $admin;
 }
 
+function admin_login_blocked(): bool
+{
+    return throttle_is_blocked('admin_login');
+}
+
 function admin_login(string $username, string $password): bool
 {
     $stmt = db()->prepare('SELECT * FROM admins WHERE username = ? LIMIT 1');
     $stmt->execute([$username]);
     $admin = $stmt->fetch();
     if (!$admin || !password_verify($password, $admin['password_hash'])) {
+        throttle_record_failure('admin_login');
+        error_log('TinyMakerConnect: failed admin login for username "' . $username . '"');
         return false;
     }
 
+    throttle_clear('admin_login');
     admin_session();
     session_regenerate_id(true);
     $_SESSION['admin_id'] = (int)$admin['id'];

@@ -122,6 +122,10 @@ function updater_write_file(string $relative, string $contents): void
     if (!is_dir($dir) && !mkdir($dir, 0775, true)) {
         throw new RuntimeException('Could not create update directory: ' . $relative);
     }
+    $resolvedDir = realpath($dir);
+    if ($resolvedDir === false || strpos($resolvedDir . DIRECTORY_SEPARATOR, $targetRoot . DIRECTORY_SEPARATOR) !== 0) {
+        throw new RuntimeException('Update file escapes the app root: ' . $relative);
+    }
     if (file_put_contents($target, $contents) === false) {
         throw new RuntimeException('Could not update file: ' . $relative);
     }
@@ -135,6 +139,9 @@ function updater_install_latest(): array
     }
     if (empty($release['zipball_url'])) {
         throw new RuntimeException('Release does not provide a ZIP package.');
+    }
+    if (strpos((string)$release['zipball_url'], 'https://api.github.com/') !== 0) {
+        throw new RuntimeException('Release ZIP URL is not a GitHub API URL.');
     }
     if (!class_exists('ZipArchive')) {
         throw new RuntimeException('PHP ZipArchive is required for server updates.');
@@ -155,7 +162,11 @@ function updater_install_latest(): array
         throw new RuntimeException('Could not open update ZIP.');
     }
 
-    $updated = 0;
+    // Stage the full update in memory first so a broken or truncated ZIP
+    // never leaves a half-written installation behind.
+    $maxTotalBytes = 256 * 1024 * 1024;
+    $totalBytes = 0;
+    $staged = [];
     for ($i = 0; $i < $zip->numFiles; $i++) {
         $name = (string)$zip->getNameIndex($i);
         $parts = explode('/', str_replace('\\', '/', $name), 2);
@@ -168,11 +179,26 @@ function updater_install_latest(): array
             @unlink($zipPath);
             throw new RuntimeException('Could not read update file: ' . $relative);
         }
-        updater_write_file($relative, $contents);
-        $updated++;
+        $totalBytes += strlen($contents);
+        if ($totalBytes > $maxTotalBytes) {
+            $zip->close();
+            @unlink($zipPath);
+            throw new RuntimeException('Update package is unexpectedly large; aborting.');
+        }
+        $staged[$relative] = $contents;
     }
     $zip->close();
     @unlink($zipPath);
+
+    if ($staged === []) {
+        throw new RuntimeException('Update package contained no installable files.');
+    }
+
+    $updated = 0;
+    foreach ($staged as $relative => $contents) {
+        updater_write_file($relative, $contents);
+        $updated++;
+    }
 
     unset($_SESSION['update_status']);
     return [
